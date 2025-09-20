@@ -1,0 +1,83 @@
+import { writable } from 'svelte/store';
+  import { invoke } from '@tauri-apps/api/core';
+import type { DatabaseConfig, PipelineTask, MigrationStrategy } from '../types/database';
+
+// 数据库配置存储
+export const databases = writable<DatabaseConfig[]>([]);
+
+// 迁移策略存储
+export const strategies = writable<MigrationStrategy[]>([]);
+
+// 流水线任务存储
+export const pipelineTasks = writable<PipelineTask[]>([]);
+
+// 当前选中的数据库ID
+export const selectedDatabaseId = writable<string | null>(null);
+
+// 当前选中的流水线任务ID
+export const selectedTaskId = writable<string | null>(null);
+
+// 应用加载状态
+export const appLoading = writable(true);
+
+// 保存数据库配置到存储
+export async function saveDatabaseConfig(config: DatabaseConfig): Promise<void> {
+  try {
+    // 这里会通过Tauri调用后端API保存到SQLite数据库
+    const result = await invoke('save_database_config', { config });
+    console.log('Database config saved:', result);
+    
+    // 更新本地存储
+    databases.update(prev => {
+      const index = prev.findIndex(db => db.id === config.id);
+      if (index !== -1) {
+        prev[index] = config;
+      } else {
+        prev.push(config);
+      }
+      return [...prev];
+    });
+  } catch (error) {
+    console.error('Failed to save database config:', error);
+    throw error;
+  }
+}
+
+// 从存储加载所有数据库配置
+export async function loadDatabaseConfigs(): Promise<void> {
+  try {
+    // 通过Tauri调用后端API加载数据库配置
+    const configs = await invoke('get_all_database_configs');
+    databases.set(configs as DatabaseConfig[]);
+  } catch (error) {
+    console.error('Failed to load database configs:', error);
+    throw error;
+  }
+}
+
+// 创建新的流水线任务
+export async function createPipelineTask(task: Omit<PipelineTask, 'id' | 'createdAt' | 'updatedAt' | 'progress' | 'status'>): Promise<PipelineTask> {
+  try {
+    // 通过Tauri调用后端API创建流水线任务
+    const newTask = await invoke('create_pipeline_task', { task });
+    
+    // 更新本地存储
+    pipelineTasks.update(prev => [...prev, newTask as PipelineTask]);
+    
+    return newTask as PipelineTask;
+  } catch (error) {
+    console.error('Failed to create pipeline task:', error);
+    throw error;
+  }
+}
+
+// 启动流水线任务
+export async function startPipelineTask(taskId: string): Promise<void> {
+  try {
+    // 通过Tauri调用后端API启动流水线任务
+    await invoke('start_pipeline_task', { taskId });
+  } catch (error) {
+    console.error('Failed to start pipeline task:', error);
+    throw error;
+  }
+}
