@@ -1,62 +1,70 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { invoke } from '@tauri-apps/api/core';
-  import { type DatabaseConfig, DatabaseType } from '../types/database';
-  import { saveDatabaseConfig } from '../stores/appStore';
-  
+  import { onMount } from "svelte";
+  import { invoke } from "@tauri-apps/api/core";
+  import { type DatabaseConfig, DatabaseType } from "../types/database";
+  import { saveDatabaseConfig } from "../stores/appStore";
+
   // Props
   export let databaseId: string | null = null;
-  
+
   // 表单数据
   let formData: DatabaseConfig = {
-    id: '',
-    name: '',
+    id: "",
+    name: "",
     type: DatabaseType.MySQL,
-    host: 'localhost',
+    host: "localhost",
     port: 3306,
-    username: 'root',
-    password: '',
-    database: '',
-    path: '',
+    username: "root",
+    password: "",
+    database: "",
+    path: "",
     ssl: false,
     extra: {} as Record<string, string>,
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
-  
+
   // 表单状态
   let isSubmitting = false;
   let submitSuccess = false;
-  let errorMessage = '';
-  
+  let errorMessage = "";
+
+  // 表单验证错误
+  let formErrors: Record<string, string> = {};
+
   // 辅助变量用于Redis数据库索引
-  let redisDbIndex: string = '0';
-  
+  let redisDbIndex: string = "0";
+
+  // 连接测试状态
+  let isTestingConnection = false;
+  let connectionTestResult: "success" | "error" | null = null;
+  let connectionTestMessage = "";
+
   // 当编辑现有数据库时，加载数据库配置
   onMount(async () => {
     if (databaseId) {
       try {
         // 通过Tauri调用后端API获取数据库配置
-        const config = await invoke('get_database_config', { id: databaseId });
-        formData = { ...config as DatabaseConfig };
+        const config = await invoke("get_database_config", { id: databaseId });
+        formData = { ...(config as DatabaseConfig) };
         // 初始化Redis数据库索引
-        if (formData.type === DatabaseType.Redis && formData.extra?.['db']) {
-          redisDbIndex = formData.extra['db'];
+        if (formData.type === DatabaseType.Redis && formData.extra?.["db"]) {
+          redisDbIndex = formData.extra["db"];
         }
       } catch (error) {
-        console.error('Failed to load database config:', error);
-        errorMessage = '加载数据库配置失败';
+        console.error("Failed to load database config:", error);
+        errorMessage = "加载数据库配置失败";
       }
     } else {
       // 生成新的ID
       formData.id = `db_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
   });
-  
+
   // 处理数据库类型变化
   const handleTypeChange = (type: DatabaseType) => {
     formData.type = type;
-    
+
     // 根据数据库类型重置默认值
     switch (type) {
       case DatabaseType.MySQL:
@@ -69,321 +77,705 @@
         formData.port = 5432;
         break;
       case DatabaseType.SQLite:
-        formData.path = './database.db';
+        formData.path = "./database.db";
         break;
       default:
         break;
     }
+
+    // 清除相关错误
+    clearFormErrors();
   };
-  
+
+  // 清除表单错误
+  const clearFormErrors = () => {
+    formErrors = {};
+    errorMessage = "";
+  };
+
+  // 表单验证
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    // 验证必填字段
+    if (!formData.name.trim()) {
+      errors.name = "数据库名称不能为空";
+    }
+
+    if (formData.type !== DatabaseType.SQLite) {
+      if (!formData.host?.trim()) {
+        errors.host = "主机地址不能为空";
+      }
+
+      if (!formData.port) {
+        errors.port = "端口号不能为空";
+      } else if (isNaN(Number(formData.port))) {
+        errors.port = "端口号必须是数字";
+      }
+
+      if (!formData.username?.trim()) {
+        errors.username = "用户名不能为空";
+      }
+
+      if (formData.type !== DatabaseType.Redis && !formData.database?.trim()) {
+        errors.database = "数据库名称不能为空";
+      }
+    } else {
+      if (!formData.path?.trim()) {
+        errors.path = "文件路径不能为空";
+      }
+    }
+
+    if (formData.ssl) {
+      // 这里可以添加SSL相关的验证
+    }
+
+    formErrors = errors;
+    return Object.keys(errors).length === 0;
+  };
+
   // 表单提交处理
   const handleSubmit = async (event: Event) => {
     event.preventDefault();
-    
+
     if (isSubmitting) return;
-    
+
+    // 验证表单
+    if (!validateForm()) {
+      return;
+    }
+
     isSubmitting = true;
-    errorMessage = '';
-    
+    errorMessage = "";
+
     try {
-      // 验证表单数据
-      if (!formData.name.trim()) {
-        throw new Error('请输入数据库名称');
-      }
-      
-      if (formData.type !== DatabaseType.SQLite) {
-        if (!formData.host?.trim()) {
-          throw new Error('请输入数据库主机地址');
-        }
-        if (!formData.port) {
-          throw new Error('请输入数据库端口');
-        }
-        if (!formData.username?.trim()) {
-          throw new Error('请输入用户名');
-        }
-        if (formData.type !== DatabaseType.Redis && !formData.database?.trim()) {
-          throw new Error('请输入数据库名称');
-        }
-      } else {
-        if (!formData.path?.trim()) {
-          throw new Error('请输入SQLite数据库文件路径');
-        }
-      }
-      
       // 更新时间戳
       formData.updatedAt = new Date().toISOString();
-      
+
       // 保存数据库配置
       await saveDatabaseConfig(formData);
-      
+
       submitSuccess = true;
-      
+
       // 3秒后重置成功状态
       setTimeout(() => {
         submitSuccess = false;
       }, 3000);
     } catch (error) {
-      console.error('Failed to save database config:', error);
-      errorMessage = error instanceof Error ? error.message : '保存数据库配置失败';
+      console.error("Failed to save database config:", error);
+      errorMessage =
+        error instanceof Error ? error.message : "保存数据库配置失败";
     } finally {
       isSubmitting = false;
     }
   };
+
+  // 测试连接
+  const testConnection = async () => {
+    // 验证必要的字段
+    if (!validateForm()) {
+      return;
+    }
+
+    isTestingConnection = true;
+    connectionTestResult = null;
+    connectionTestMessage = "";
+
+    try {
+      // 模拟连接测试
+      // 实际项目中应该调用API测试连接
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      // 模拟连接结果（80%的概率成功）
+      const isSuccess = Math.random() > 0.2;
+
+      if (isSuccess) {
+        connectionTestResult = "success";
+        connectionTestMessage = "连接成功！";
+      } else {
+        connectionTestResult = "error";
+        connectionTestMessage = "连接失败，请检查配置";
+      }
+    } catch (error) {
+      console.error("Connection test failed:", error);
+      connectionTestResult = "error";
+      connectionTestMessage =
+        error instanceof Error ? error.message : "连接测试失败";
+    } finally {
+      isTestingConnection = false;
+
+      // 3秒后重置连接测试结果
+      setTimeout(() => {
+        connectionTestResult = null;
+        connectionTestMessage = "";
+      }, 3000);
+    }
+  };
+
+  // 取消操作
+  const handleCancel = () => {
+    // 在实际应用中，这里可能需要返回上一页或关闭表单
+    window.history.back();
+  };
 </script>
 
-<div class="database-config-form">
-  <h2>{databaseId ? '编辑数据库配置' : '添加新数据库配置'}</h2>
-  
+<div class="database-config-form-container">
+  <div class="form-header">
+    <h2>{databaseId ? "编辑数据库配置" : "添加新数据库"}</h2>
+    <button class="close-button" on:click={handleCancel}>&times;</button>
+  </div>
+
   {#if errorMessage}
-    <div class="error-message">{errorMessage}</div>
+    <div class="global-error-message">{errorMessage}</div>
   {/if}
-  
+
   {#if submitSuccess}
-    <div class="success-message">数据库配置保存成功！</div>
+    <div class="global-success-message">数据库配置保存成功！</div>
   {/if}
-  
-  <form on:submit={handleSubmit}>
-    <div class="form-group">
-      <label for="name">数据库名称</label>
-      <input
-        id="name"
-        type="text"
-        bind:value={formData.name}
-        placeholder="请输入数据库名称"
-        required
-      />
-    </div>
-    
-    <div class="form-group">
-      <label for="type">数据库类型</label>
-      <select
-        id="type"
-        bind:value={formData.type}
-        on:change={(e) => handleTypeChange(e.currentTarget.value as DatabaseType)}
-        required
-      >
-        <option value={DatabaseType.MySQL}>MySQL</option>
-        <option value={DatabaseType.Redis}>Redis</option>
-        <option value={DatabaseType.SQLite}>SQLite</option>
-        <option value={DatabaseType.PostgreSQL}>PostgreSQL</option>
-        <option value={DatabaseType.MongoDB}>MongoDB</option>
-      </select>
-    </div>
-    
-    {#if formData.type !== DatabaseType.SQLite}
-      <div class="form-group">
-        <label for="host">主机地址</label>
-        <input
-          id="host"
-          type="text"
-          bind:value={formData.host}
-          placeholder="请输入数据库主机地址"
-          required
-        />
+
+  <form on:submit={handleSubmit} class="database-config-form">
+    <div class="form-section">
+      <h3>基本信息</h3>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="name">数据库名称 <span class="required">*</span></label>
+          <input
+            type="text"
+            id="name"
+            bind:value={formData.name}
+            placeholder="请输入数据库名称"
+            class={formErrors.name ? "error" : ""}
+            on:input={() => delete formErrors.name}
+          />
+          {#if formErrors.name}
+            <span class="error-message">{formErrors.name}</span>
+          {/if}
+        </div>
+
+        <div class="form-group">
+          <label for="type">数据库类型 <span class="required">*</span></label>
+          <select
+            id="type"
+            bind:value={formData.type}
+            class={formErrors.type ? "error" : ""}
+            on:change={(e) =>
+              handleTypeChange(e.currentTarget.value as DatabaseType)}
+          >
+            <option value={DatabaseType.MySQL}>MySQL</option>
+            <option value={DatabaseType.PostgreSQL}>PostgreSQL</option>
+            <option value={DatabaseType.MongoDB}>MongoDB</option>
+            <option value={DatabaseType.SQLite}>SQLite</option>
+            <option value={DatabaseType.Redis}>Redis</option>
+          </select>
+          {#if formErrors.type}
+            <span class="error-message">{formErrors.type}</span>
+          {/if}
+        </div>
       </div>
-      
-      <div class="form-group">
-        <label for="port">端口</label>
-        <input
-          id="port"
-          type="number"
-          bind:value={formData.port}
-          min="1"
-          max="65535"
-          placeholder="请输入数据库端口"
-          required
-        />
+    </div>
+
+    {#if formData.type !== DatabaseType.SQLite}
+      <div class="form-section">
+        <h3>连接信息</h3>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="host">主机地址 <span class="required">*</span></label>
+            <input
+              type="text"
+              id="host"
+              bind:value={formData.host}
+              placeholder="请输入主机地址"
+              class={formErrors.host ? "error" : ""}
+              on:input={() => delete formErrors.host}
+            />
+            {#if formErrors.host}
+              <span class="error-message">{formErrors.host}</span>
+            {/if}
+          </div>
+
+          <div class="form-group">
+            <label for="port">端口号 <span class="required">*</span></label>
+            <input
+              type="number"
+              id="port"
+              bind:value={formData.port}
+              min="1"
+              max="65535"
+              placeholder="请输入端口号"
+              class={formErrors.port ? "error" : ""}
+              on:input={() => delete formErrors.port}
+            />
+            {#if formErrors.port}
+              <span class="error-message">{formErrors.port}</span>
+            {/if}
+          </div>
+        </div>
+
+        {#if formData.type !== DatabaseType.Redis}
+          <div class="form-group">
+            <label for="database"
+              >数据库名称 <span class="required">*</span></label
+            >
+            <input
+              type="text"
+              id="database"
+              bind:value={formData.database}
+              placeholder="请输入数据库名称"
+              class={formErrors.database ? "error" : ""}
+              on:input={() => delete formErrors.database}
+            />
+            {#if formErrors.database}
+              <span class="error-message">{formErrors.database}</span>
+            {/if}
+          </div>
+        {/if}
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="username">用户名 <span class="required">*</span></label>
+            <input
+              type="text"
+              id="username"
+              bind:value={formData.username}
+              placeholder="请输入用户名"
+              class={formErrors.username ? "error" : ""}
+              on:input={() => delete formErrors.username}
+            />
+            {#if formErrors.username}
+              <span class="error-message">{formErrors.username}</span>
+            {/if}
+          </div>
+
+          <div class="form-group">
+            <label for="password">密码</label>
+            <input
+              type="password"
+              id="password"
+              bind:value={formData.password}
+              placeholder="请输入密码"
+            />
+          </div>
+        </div>
       </div>
     {:else}
-      <div class="form-group">
-        <label for="path">文件路径</label>
-        <input
-          id="path"
-          type="text"
-          bind:value={formData.path}
-          placeholder="请输入SQLite数据库文件路径"
-          required
-        />
-        <button type="button" class="browse-button">浏览...</button>
+      <div class="form-section">
+        <h3>文件信息</h3>
+
+        <div class="form-group">
+          <label for="path">文件路径 <span class="required">*</span></label>
+          <div class="file-input-container">
+            <input
+              type="text"
+              id="path"
+              bind:value={formData.path}
+              placeholder="请输入SQLite文件路径"
+              class={formErrors.path ? "error" : ""}
+              on:input={() => delete formErrors.path}
+            />
+            <button type="button" class="browse-button">浏览...</button>
+          </div>
+          {#if formErrors.path}
+            <span class="error-message">{formErrors.path}</span>
+          {/if}
+        </div>
       </div>
     {/if}
-    
-    <div class="form-group">
-      <label for="username">用户名</label>
-      <input
-        id="username"
-        type="text"
-        bind:value={formData.username}
-        placeholder="请输入用户名"
-        required={formData.type !== DatabaseType.SQLite}
-      />
-    </div>
-    
-    <div class="form-group">
-      <label for="password">密码</label>
-      <input
-        id="password"
-        type="password"
-        bind:value={formData.password}
-        placeholder="请输入密码"
-      />
-    </div>
-    
-    {#if formData.type !== DatabaseType.Redis && formData.type !== DatabaseType.SQLite}
-      <div class="form-group">
-        <label for="database">数据库名称</label>
-        <input
-          id="database"
-          type="text"
-          bind:value={formData.database}
-          placeholder="请输入数据库名称"
-          required
-        />
+
+    <div class="form-section">
+      <div class="checkbox-group">
+        <input type="checkbox" id="ssl" bind:checked={formData.ssl} />
+        <label for="ssl">启用SSL连接</label>
       </div>
-    {/if}
-    
-    <div class="form-group">
-      <label for="ssl">使用SSL</label>
-      <input
-        id="ssl"
-        type="checkbox"
-        bind:checked={formData.ssl}
-      />
+
+      {#if formData.ssl}
+        <div class="ssl-config">
+          <div class="form-group">
+            <label for="ssl-cert">SSL证书</label>
+            <textarea
+              id="ssl-cert"
+              placeholder="请输入SSL证书内容"
+              rows="4"
+              class="monospace"
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="ssl-key">SSL密钥</label>
+            <textarea
+              id="ssl-key"
+              placeholder="请输入SSL密钥内容"
+              rows="4"
+              class="monospace"
+            ></textarea>
+          </div>
+        </div>
+      {/if}
     </div>
-    
+
     {#if formData.type === DatabaseType.Redis}
-      <div class="form-group">
-        <label for="redis-db">数据库索引</label>
-        <input
-          id="redis-db"
-          type="number"
-          min="0"
-          max="15"
-          bind:value={redisDbIndex}
-          placeholder="请输入Redis数据库索引（0-15）"
-          on:change={(e) => {
-            (formData.extra ??= {})['db'] = e.currentTarget.value;
-            redisDbIndex = e.currentTarget.value;
-          }}
-        />
+      <div class="form-section">
+        <div class="form-group">
+          <label for="redis-db">数据库索引</label>
+          <input
+            id="redis-db"
+            type="number"
+            min="0"
+            max="15"
+            bind:value={redisDbIndex}
+            placeholder="请输入Redis数据库索引（0-15）"
+            on:change={(e) => {
+              (formData.extra ??= {})["db"] = e.currentTarget.value;
+              redisDbIndex = e.currentTarget.value;
+            }}
+          />
+        </div>
       </div>
     {/if}
-    
+
     <div class="form-actions">
-      <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? '保存中...' : '保存配置'}
-      </button>
-      <button type="button" class="cancel-button">取消</button>
+      <div class="connection-test">
+        <button
+          type="button"
+          class="test-button"
+          on:click={testConnection}
+          disabled={isTestingConnection}
+        >
+          {isTestingConnection ? "测试中..." : "测试连接"}
+        </button>
+        {#if connectionTestResult}
+          <span class={`connection-result ${connectionTestResult}`}>
+            {connectionTestMessage}
+          </span>
+        {/if}
+      </div>
+
+      <div class="submit-buttons">
+        <button type="button" class="cancel-button" on:click={handleCancel}
+          >取消</button
+        >
+        <button type="submit" class="submit-button" disabled={isSubmitting}>
+          {isSubmitting ? "提交中..." : databaseId ? "更新" : "添加"}
+        </button>
+      </div>
     </div>
   </form>
 </div>
 
 <style>
-  .database-config-form {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 20px;
+  .database-config-form-container {
     background: white;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    max-width: 800px;
+    margin: 0 auto;
+    position: relative;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
   }
-  
-  .database-config-form h2 {
-    font-size: 1.5rem;
+
+  .form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .form-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
     color: #333;
-    margin-bottom: 20px;
   }
-  
-  .error-message {
-    background-color: #ffebee;
-    color: #c62828;
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 15px;
+
+  .close-button {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
   }
-  
-  .success-message {
-    background-color: #e8f5e9;
-    color: #2e7d32;
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 15px;
+
+  .close-button:hover {
+    color: #666;
   }
-  
+
+  .global-error-message {
+    background-color: #fff2f0;
+    color: #f5222d;
+    padding: 12px 24px;
+    border-left: 4px solid #f5222d;
+    margin-bottom: 0;
+  }
+
+  .global-success-message {
+    background-color: #f6ffed;
+    color: #52c41a;
+    padding: 12px 24px;
+    border-left: 4px solid #52c41a;
+    margin-bottom: 0;
+  }
+
+  .database-config-form {
+    padding: 24px;
+  }
+
+  .form-section {
+    margin-bottom: 24px;
+  }
+
+  .form-section h3 {
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    margin: 0 0 16px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
   .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
-  
+
   .form-group label {
     display: block;
-    margin-bottom: 5px;
-    color: #555;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 6px;
     font-weight: 500;
   }
-  
+
+  .required {
+    color: #f5222d;
+  }
+
   .form-group input,
-  .form-group select {
+  .form-group select,
+  .form-group textarea {
     width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
+    padding: 8px 12px;
+    border: 1px solid #d9d9d9;
     border-radius: 4px;
-    font-size: 1rem;
+    font-size: 14px;
+    transition:
+      border-color 0.3s,
+      box-shadow 0.3s;
+    box-sizing: border-box;
+    font-family: inherit;
   }
-  
-  .form-group input[type="checkbox"] {
-    width: auto;
-    margin-right: 10px;
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: #1890ff;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
   }
-  
+
+  .form-group input.error,
+  .form-group select.error,
+  .form-group textarea.error {
+    border-color: #f5222d;
+  }
+
+  .form-group input.error:focus,
+  .form-group select.error:focus,
+  .form-group textarea.error:focus {
+    box-shadow: 0 0 0 2px rgba(245, 34, 45, 0.2);
+  }
+
+  .error-message {
+    display: block;
+    font-size: 12px;
+    color: #f5222d;
+    margin-top: 4px;
+  }
+
+  .file-input-container {
+    display: flex;
+    gap: 8px;
+  }
+
+  .file-input-container input {
+    flex: 1;
+  }
+
   .browse-button {
-    margin-left: 10px;
-    padding: 10px 15px;
     background-color: #f5f5f5;
-    border: 1px solid #ddd;
+    border: 1px solid #d9d9d9;
     border-radius: 4px;
+    padding: 8px 16px;
     cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+    white-space: nowrap;
   }
-  
+
   .browse-button:hover {
-    background-color: #e0e0e0;
+    background-color: #e6f7ff;
+    border-color: #91d5ff;
+    color: #1890ff;
   }
-  
+
+  .checkbox-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .checkbox-group input[type="checkbox"] {
+    width: auto;
+    margin-right: 8px;
+    margin-top: 2px;
+  }
+
+  .checkbox-group label {
+    margin: 0;
+    font-weight: 400;
+  }
+
+  .ssl-config {
+    background-color: #fafafa;
+    padding: 16px;
+    border-radius: 4px;
+    margin-top: 8px;
+  }
+
+  .monospace {
+    font-family: "Consolas", "Monaco", "Courier New", monospace;
+  }
+
   .form-actions {
     display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 30px;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 24px;
+    border-top: 1px solid #f0f0f0;
   }
-  
-  .form-actions button {
-    padding: 10px 20px;
+
+  .connection-test {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .test-button {
+    background-color: #52c41a;
+    color: white;
     border: none;
     border-radius: 4px;
+    padding: 8px 16px;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 14px;
+    transition: background-color 0.3s;
   }
-  
-  .form-actions button[type="submit"] {
-    background-color: #4CAF50;
-    color: white;
+
+  .test-button:hover:not(:disabled) {
+    background-color: #73d13d;
   }
-  
-  .form-actions button[type="submit"]:hover:not(:disabled) {
-    background-color: #45a049;
-  }
-  
-  .form-actions button[type="submit"]:disabled {
-    background-color: #ccc;
+
+  .test-button:disabled {
+    background-color: #d9d9d9;
     cursor: not-allowed;
   }
-  
-  .cancel-button {
-    background-color: #f44336;
-    color: white;
+
+  .connection-result {
+    font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid transparent;
   }
-  
+
+  .connection-result.success {
+    background-color: #f6ffed;
+    color: #52c41a;
+    border-color: #b7eb8f;
+  }
+
+  .connection-result.error {
+    background-color: #fff2f0;
+    color: #f5222d;
+    border-color: #ffccc7;
+  }
+
+  .submit-buttons {
+    display: flex;
+    gap: 12px;
+  }
+
+  .cancel-button {
+    background-color: white;
+    color: #666;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+  }
+
   .cancel-button:hover {
-    background-color: #d32f2f;
+    border-color: #1890ff;
+    color: #1890ff;
+  }
+
+  .submit-button {
+    background-color: #1890ff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+  }
+
+  .submit-button:hover:not(:disabled) {
+    background-color: #40a9ff;
+  }
+
+  .submit-button:disabled {
+    background-color: #d9d9d9;
+    cursor: not-allowed;
+  }
+
+  /* 响应式布局 */
+  @media (max-width: 768px) {
+    .database-config-form-container {
+      margin: 0 16px;
+    }
+
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+    }
+
+    .connection-test {
+      justify-content: center;
+    }
+
+    .submit-buttons {
+      justify-content: center;
+    }
   }
 </style>

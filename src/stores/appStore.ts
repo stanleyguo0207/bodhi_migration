@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-  import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core';
 import type { DatabaseConfig, PipelineTask, MigrationStrategy } from '../types/database';
 
 // 数据库配置存储
@@ -26,7 +26,7 @@ export async function saveDatabaseConfig(config: DatabaseConfig): Promise<void> 
     // 这里会通过Tauri调用后端API保存到SQLite数据库
     const result = await invoke('save_database_config', { config });
     console.log('Database config saved:', result);
-    
+
     // 更新本地存储
     databases.update(prev => {
       const index = prev.findIndex(db => db.id === config.id);
@@ -60,10 +60,10 @@ export async function createPipelineTask(task: Omit<PipelineTask, 'id' | 'create
   try {
     // 通过Tauri调用后端API创建流水线任务
     const newTask = await invoke('create_pipeline_task', { task });
-    
+
     // 更新本地存储
     pipelineTasks.update(prev => [...prev, newTask as PipelineTask]);
-    
+
     return newTask as PipelineTask;
   } catch (error) {
     console.error('Failed to create pipeline task:', error);
@@ -78,6 +78,20 @@ export async function startPipelineTask(taskId: string): Promise<void> {
     await invoke('start_pipeline_task', { taskId });
   } catch (error) {
     console.error('Failed to start pipeline task:', error);
+    throw error;
+  }
+}
+
+// 删除数据库配置
+export async function removeDatabaseConfig(id: string): Promise<void> {
+  try {
+    // 移除数据库连接
+    await invoke('remove_database_connection', { id });
+    
+    // 从本地存储中移除
+    databases.update(prev => prev.filter(db => db.id !== id));
+  } catch (error) {
+    console.error('Failed to remove database config:', error);
     throw error;
   }
 }
