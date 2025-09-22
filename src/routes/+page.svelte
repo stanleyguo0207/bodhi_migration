@@ -69,7 +69,7 @@
 <div class="app-container">
   <header class="app-header">
     <div class="header-left">
-      <h1>Bodhi Dump</h1>
+      <h1>Migration</h1>
     </div>
     <nav class="app-nav">
       <button
