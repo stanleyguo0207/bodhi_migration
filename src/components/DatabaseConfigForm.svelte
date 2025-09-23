@@ -41,6 +41,9 @@
   let connectionTestResult: "success" | "error" | null = null;
   let connectionTestMessage = "";
 
+  // 密码显示状态
+  let showPassword = false;
+
   // 当编辑现有数据库时，加载数据库配置
   onMount(async () => {
     if (databaseId) {
@@ -394,12 +397,22 @@
 
         <div class="detail-card form-group">
           <label for="password">密码</label>
-          <input
-            type="password"
-            id="password"
-            bind:value={formData.password}
-            placeholder="请输入密码"
-          />
+          <div class="password-input-container">
+            <input
+              type={showPassword ? "text" : "password"}
+              id="password"
+              bind:value={formData.password}
+              placeholder="请输入密码"
+            />
+            <button
+              type="button"
+              class="password-toggle-btn"
+              on:click={() => showPassword = !showPassword}
+              aria-label={showPassword ? "隐藏密码" : "显示密码"}
+            >
+              {showPassword ? "🙈" : "👁️"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -693,6 +706,43 @@
     color: #ff3b30;
     margin-top: 6px;
     font-weight: 500;
+  }
+
+  .password-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .password-input-container input {
+    padding-right: 50px;
+  }
+
+  .password-toggle-btn {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    font-size: 16px;
+    color: #8e8e93;
+    border-radius: 6px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  .password-toggle-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: #007AFF;
+  }
+
+  .password-toggle-btn:active {
+    transform: scale(0.95);
   }
 
   .file-input-container {

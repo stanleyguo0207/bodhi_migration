@@ -7,6 +7,7 @@
     pipelineTasks,
     startPipelineTask,
   } from "../stores/appStore";
+  import LoadingAnimation from "./LoadingAnimation.svelte";
 
   // Props
   export let taskId: string | null = null;
@@ -116,7 +117,13 @@
 
 <div class="task-runner">
   {#if !task}
-    <div class="loading">加载任务详情中...</div>
+    <div class="loading-container">
+      <LoadingAnimation 
+        size="medium" 
+        color="var(--apple-primary, #007aff)" 
+        text="加载任务详情中..."
+      />
+    </div>
   {:else}
     <header class="task-header">
       <h1>{task.name}</h1>
@@ -232,13 +239,12 @@
     font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
   }
 
-  .loading {
+  .loading-container {
     display: flex;
     justify-content: center;
     align-items: center;
     height: 50vh;
-    font-size: 1.2rem;
-    color: #666;
+    background: transparent;
   }
 
   .task-header {

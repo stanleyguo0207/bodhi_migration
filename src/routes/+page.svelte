@@ -6,6 +6,7 @@
   import DatabaseConfigForm from "../components/DatabaseConfigForm.svelte";
   import TaskCreationForm from "../components/TaskCreationForm.svelte";
   import TaskRunner from "../components/TaskRunner.svelte";
+  import LoadingAnimation from "../components/LoadingAnimation.svelte";
 
   // 应用状态
   let currentView = "dashboard"; // dashboard, databaseConfig, migrationPipeline, taskManagement
@@ -116,7 +117,15 @@
   </header>
 
   <main class="app-main">
-    {#if showAddDatabaseForm}
+    {#if $appLoading}
+      <div class="loading-overlay">
+        <LoadingAnimation 
+          size="large" 
+          color="var(--apple-accent-blue)" 
+          text="正在初始化应用..."
+        />
+      </div>
+    {:else if showAddDatabaseForm}
       <DatabaseConfigForm
         databaseId={selectedDatabaseId}
         onClose={() => (showAddDatabaseForm = false)}
@@ -275,6 +284,22 @@
   .app-main {
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+  }
+
+  /* Loading overlay */
+  .loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
   }
 
   /* Icons - Custom SVG icons */
