@@ -2,6 +2,8 @@
   "name": "bodhi_migration",
   "version": "0.1.0",
   "description": "",
+  "author": "stanleyguo0207",
+  "email": "stanleyguo0207@163.com",
   "type": "module",
   "scripts": {
     "dev": "vite dev",
