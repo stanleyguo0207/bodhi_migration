@@ -39,7 +39,7 @@ export async function saveDatabaseConfig(
       }${config.host}:${config.port}`;
       connectionId = await invoke("add_redis_connection", {
         url: redisUrl,
-        db: config.databaseName ? parseInt(config.databaseName) : undefined,
+        db: config.database ? parseInt(config.database) : undefined,
       });
     } else if (config.type === DatabaseType.MySQL) {
       connectionId = await invoke("add_mysql_connection", {
@@ -47,7 +47,7 @@ export async function saveDatabaseConfig(
         port: config.port,
         username: config.username,
         password: config.password || "",
-        database: config.databaseName || "",
+        database: config.database || "",
       });
     } else if (config.type === DatabaseType.PostgreSQL) {
       // 注意：PostgreSQL在当前后端实现中可能不被支持

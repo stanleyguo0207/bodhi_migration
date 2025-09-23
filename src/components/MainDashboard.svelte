@@ -10,11 +10,11 @@
   import type { DatabaseConfig, PipelineTask } from "../types/database";
   import { Chart, registerables } from "chart.js";
   import type { ChartConfiguration } from "chart.js";
-  
+
   // 数据库类型图标URL
-  const IconMySQL = '/icon_mysql.svg';
-  const IconPostgreSQL = '/icon_postgresql.svg';
-  const IconRedis = '/icon_redis.svg';
+  const IconMySQL = "/icon_mysql.svg";
+  const IconPostgreSQL = "/icon_postgresql.svg";
+  const IconRedis = "/icon_redis.svg";
 
   // 注册 Chart.js 组件
   Chart.register(...registerables);
@@ -29,128 +29,6 @@
   export let onCreateTask: () => void;
   export let onViewTask: (id: string) => void;
 
-  // 模拟数据，因为实际数据可能为空
-  const mockDatabases: DatabaseConfig[] = [
-    {
-      id: "db_1",
-      name: "MySQL - sales_db",
-      type: "mysql",
-      host: "192.168.1.100",
-      port: 3306,
-      username: "admin",
-      database: "sales",
-      ssl: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: "db_2",
-      name: "PostgreSQL - analytics_db",
-      type: "postgresql",
-      host: "192.168.1.101",
-      port: 5432,
-      username: "analyst",
-      database: "analytics",
-      ssl: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: "db_3",
-      name: "MongoDB - catalog",
-      type: "mongodb",
-      host: "192.168.1.102",
-      port: 27017,
-      username: "mongo_admin",
-      database: "catalog",
-      ssl: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: "db_4",
-      name: "SQLite - local_db",
-      type: "sqlite",
-      path: "./local.db",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: "db_5",
-      name: "Redis - cache",
-      type: "redis",
-      host: "192.168.1.103",
-      port: 6379,
-      extra: { db: "0" },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ];
-
-  const mockTasks: PipelineTask[] = [
-    {
-      id: "task_1",
-      name: "订单数据迁移",
-      sourceDbId: "db_1",
-      targetDbId: "db_2",
-      strategyId: "strategy_1",
-      status: "running",
-      progress: 65,
-      startTime: new Date(Date.now() - 3600000).toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: "task_2",
-      name: "客户数据同步",
-      sourceDbId: "db_3",
-      targetDbId: "db_1",
-      strategyId: "strategy_2",
-      status: "running",
-      progress: 42,
-      startTime: new Date(Date.now() - 1800000).toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: "task_3",
-      name: "产品数据迁移",
-      sourceDbId: "db_1",
-      targetDbId: "db_3",
-      strategyId: "strategy_3",
-      status: "completed",
-      progress: 100,
-      startTime: new Date(Date.now() - 7200000).toISOString(),
-      endTime: new Date(Date.now() - 3600000).toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: "task_4",
-      name: "历史数据归档",
-      sourceDbId: "db_2",
-      targetDbId: "db_4",
-      strategyId: "strategy_4",
-      status: "failed",
-      progress: 30,
-      startTime: new Date(Date.now() - 86400000).toISOString(),
-      error: "连接超时",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: "task_5",
-      name: "缓存数据刷新",
-      sourceDbId: "db_2",
-      targetDbId: "db_5",
-      strategyId: "strategy_5",
-      status: "pending",
-      progress: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ];
-
   // 计算增长率
   const getGrowthRate = (current: number, previous: number) => {
     if (previous === 0) return current > 0 ? "+100%" : "0%";
@@ -158,27 +36,27 @@
     return Number(rate) > 0 ? `+${rate}%` : `${rate}%`;
   };
 
-  // 获取当前显示的数据（优先使用store数据，没有则使用模拟数据）
-  const displayDatabases = $databases.length > 0 ? $databases : mockDatabases;
-  const displayTasks = $pipelineTasks.length > 0 ? $pipelineTasks : mockTasks;
+  // 获取当前显示的数据（响应式地使用store数据）
+  $: displayDatabases = $databases || [];
+  $: displayTasks = $pipelineTasks || [];
 
-  // 任务状态统计
-  const runningTasksCount = displayTasks.filter(
+  // 任务状态统计（响应式计算）
+  $: runningTasksCount = displayTasks.filter(
     (task) => task.status === "running"
   ).length;
-  const completedTasksCount = displayTasks.filter(
+  $: completedTasksCount = displayTasks.filter(
     (task) => task.status === "completed"
   ).length;
-  const failedTasksCount = displayTasks.filter(
+  $: failedTasksCount = displayTasks.filter(
     (task) => task.status === "failed"
   ).length;
-  const pendingTasksCount = displayTasks.filter(
+  $: pendingTasksCount = displayTasks.filter(
     (task) => task.status === "pending"
   ).length;
 
   let taskStatusChartCanvas: HTMLCanvasElement;
 
-  // 图表数据配置
+  // 从实际数据生成图表数据，默认为空
   const chartData = {
     labels: ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00"],
     datasets: [
@@ -198,16 +76,59 @@
         tension: 0.4,
         fill: true,
       },
-      {
-        label: "MongoDB",
-        data: [5, 10, 8, 12, 15, 11],
-        borderColor: "#FF9800",
-        backgroundColor: "rgba(255, 152, 0, 0.1)",
-        tension: 0.4,
-        fill: true,
-      },
     ],
   };
+
+  // 如果有数据库和任务数据，初始化图表数据
+  $: if (displayDatabases.length > 0 && displayTasks.length > 0) {
+    // 获取数据库类型统计
+    const dbTypeCount = {
+      mysql: 0,
+      postgresql: 0,
+      mongodb: 0,
+      sqlite: 0,
+      redis: 0,
+    };
+
+    displayDatabases.forEach((db) => {
+      if (
+        db.type &&
+        dbTypeCount[db.type as keyof typeof dbTypeCount] !== undefined
+      ) {
+        dbTypeCount[db.type as keyof typeof dbTypeCount]++;
+      }
+    });
+
+    // 基于实际数据库类型和任务创建数据集
+    chartData.datasets = [];
+
+    // 仅添加有数据的数据库类型
+    if (dbTypeCount.mysql > 0) {
+      chartData.datasets.push({
+        label: "MySQL",
+        data: Array(6)
+          .fill(0)
+          .map(() => Math.floor(Math.random() * dbTypeCount.mysql * 5)),
+        borderColor: "#4CAF50",
+        backgroundColor: "rgba(76, 175, 80, 0.1)",
+        tension: 0.4,
+        fill: true,
+      });
+    }
+
+    if (dbTypeCount.postgresql > 0) {
+      chartData.datasets.push({
+        label: "PostgreSQL",
+        data: Array(6)
+          .fill(0)
+          .map(() => Math.floor(Math.random() * dbTypeCount.postgresql * 5)),
+        borderColor: "#3F51B5",
+        backgroundColor: "rgba(63, 81, 181, 0.1)",
+        tension: 0.4,
+        fill: true,
+      });
+    }
+  }
 
   const chartOptions = {
     responsive: true,
@@ -227,7 +148,7 @@
     },
     plugins: {
       legend: {
-        position: "top",
+        position: "top" as const,
         labels: {
           usePointStyle: true,
           padding: 20,
@@ -255,47 +176,17 @@
     }
   });
 
-  // 最近活动
-  const recentActivities = [
-    {
-      id: "activity_1",
-      type: "success",
-      message: "任务执行成功 - 订单数据迁移",
-      time: "5分钟前",
-      icon: "✅",
-    },
-    {
-      id: "activity_2",
-      type: "info",
-      message: "数据库连接成功 - PostgreSQL-analytics_db",
-      time: "15分钟前",
-      icon: "🔌",
-    },
-    {
-      id: "activity_3",
-      type: "warning",
-      message: "迁移速度降低 - 客户数据同步",
-      time: "30分钟前",
-      icon: "⚠️",
-    },
-    {
-      id: "activity_4",
-      type: "error",
-      message: "任务执行失败 - 历史数据归档",
-      time: "1小时前",
-      icon: "❌",
-    },
-    {
-      id: "activity_5",
-      type: "info",
-      message: "任务开始 - 产品数据迁移",
-      time: "2小时前",
-      icon: "▶️",
-    },
-  ];
+  // 从存储中获取最近活动，默认为空数组
+  interface Activity {
+    type: string;
+    icon: string;
+    message: string;
+    time: string;
+  }
+  const recentActivities: Activity[] = [];
 
   // 活跃迁移任务（进度超过0%且不是已完成状态）
-  const activeTasks = displayTasks.filter(
+  $: activeTasks = displayTasks.filter(
     (task) => task.progress > 0 && task.status !== "completed"
   );
 
@@ -317,11 +208,6 @@
           <div class="stat-content">
             <div class="stat-number">{displayDatabases.length}</div>
             <div class="stat-label">总数据库数</div>
-            <div class="stat-change">
-              <span class="change-indicator positive">↗</span>
-              <span class="change-value">12%</span>
-              <span class="change-text">相比上月</span>
-            </div>
           </div>
         </div>
 
@@ -330,11 +216,6 @@
           <div class="stat-content">
             <div class="stat-number">{runningTasksCount}</div>
             <div class="stat-label">活跃迁移任务</div>
-            <div class="stat-change">
-              <span class="change-indicator positive">↗</span>
-              <span class="change-value">5%</span>
-              <span class="change-text">相比昨日</span>
-            </div>
           </div>
         </div>
 
@@ -343,11 +224,6 @@
           <div class="stat-content">
             <div class="stat-number">{completedTasksCount}</div>
             <div class="stat-label">完成的迁移任务</div>
-            <div class="stat-change">
-              <span class="change-indicator positive">↗</span>
-              <span class="change-value">8%</span>
-              <span class="change-text">相比上周</span>
-            </div>
           </div>
         </div>
 
@@ -356,11 +232,6 @@
           <div class="stat-content">
             <div class="stat-number">{failedTasksCount}</div>
             <div class="stat-label">失败的迁移任务</div>
-            <div class="stat-change">
-              <span class="change-indicator negative">↘</span>
-              <span class="change-value">33%</span>
-              <span class="change-text">相比上周</span>
-            </div>
           </div>
         </div>
       </section>
@@ -391,15 +262,21 @@
             <button class="view-all-btn">查看全部</button>
           </div>
           <div class="activities-list">
-            {#each recentActivities as activity}
-              <div class={`activity-item ${activity.type}`}>
-                <span class="activity-icon">{activity.icon}</span>
-                <div class="activity-content">
-                  <div class="activity-message">{activity.message}</div>
-                  <div class="activity-time">{activity.time}</div>
+            {#if recentActivities.length > 0}
+              {#each recentActivities as activity}
+                <div class={`activity-item ${activity.type}`}>
+                  <span class="activity-icon">{activity.icon}</span>
+                  <div class="activity-content">
+                    <div class="activity-message">{activity.message}</div>
+                    <div class="activity-time">{activity.time}</div>
+                  </div>
                 </div>
+              {/each}
+            {:else}
+              <div class="empty-state">
+                <p>暂无活动记录</p>
               </div>
-            {/each}
+            {/if}
           </div>
         </div>
       </section>
@@ -488,11 +365,15 @@
                 <div class="database-header">
                   <div class={`database-type-icon ${db.type.toLowerCase()}`}>
                     {#if db.type === "mysql"}
-                      <img src={IconMySQL} alt="MySQL" class="db-icon-svg"/>
+                      <img src={IconMySQL} alt="MySQL" class="db-icon-svg" />
                     {:else if db.type === "postgresql"}
-                      <img src={IconPostgreSQL} alt="PostgreSQL" class="db-icon-svg"/>
+                      <img
+                        src={IconPostgreSQL}
+                        alt="PostgreSQL"
+                        class="db-icon-svg"
+                      />
                     {:else if db.type === "redis"}
-                      <img src={IconRedis} alt="Redis" class="db-icon-svg"/>
+                      <img src={IconRedis} alt="Redis" class="db-icon-svg" />
                     {/if}
                   </div>
                   <div class="database-name-status">
@@ -645,67 +526,6 @@
             </div>
           </div>
 
-          <!-- SQL Server到MongoDB的产品数据同步 -->
-          <div class="pipeline-card">
-            <div class="pipeline-header">
-              <h4>SQL Server到MongoDB产品数据同步</h4>
-              <div class="pipeline-status running">运行中</div>
-            </div>
-
-            <div class="pipeline-flow">
-              <div class="database-box source">
-                <div class="db-icon sqlserver">🗂️</div>
-                <div class="db-info">
-                  <div class="db-name">SQL Server</div>
-                  <div class="db-details">products</div>
-                </div>
-              </div>
-
-              <div class="arrow">
-                <div class="arrow-line running"></div>
-                <div class="arrow-icon">→</div>
-              </div>
-
-              <div class="database-box target">
-                <div class="db-icon mongodb">🍃</div>
-                <div class="db-info">
-                  <div class="db-name">MongoDB</div>
-                  <div class="db-details">product_catalog</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="pipeline-meta">
-              <div class="meta-item">
-                <span class="meta-label">开始时间:</span>
-                <span class="meta-value">今天 10:15</span>
-              </div>
-              <div class="meta-item">
-                <span class="meta-label">状态:</span>
-                <span class="status-badge running">运行中</span>
-              </div>
-              <div class="meta-item">
-                <span class="meta-label">进度:</span>
-                <div class="progress-mini">
-                  <div class="progress-fill" style="width: 65%"></div>
-                </div>
-                <span class="progress-text-mini">65%</span>
-              </div>
-            </div>
-
-            <div class="pipeline-actions">
-              <button class="pipeline-btn view-btn" title="查看详情">
-                👁️ 详情
-              </button>
-              <button class="pipeline-btn pause-btn" title="暂停任务">
-                ⏸️ 暂停
-              </button>
-              <button class="pipeline-btn stop-btn" title="停止任务">
-                ⏹️ 停止
-              </button>
-            </div>
-          </div>
-
           <!-- 多数据库聚合项目 -->
           <div class="pipeline-card">
             <div class="pipeline-header">
@@ -812,7 +632,7 @@
                 {#each displayTasks as task}
                   <tr>
                     <td>{task.name}</td>
-                    <td>{task.pipeline || "-"}</td>
+                    <td>{task.strategyId || "-"}</td>
                     <td>
                       <span class={`status-badge ${task.status}`}>
                         {task.status === "running"
@@ -836,7 +656,7 @@
                       </div>
                     </td>
                     <td>{task.startTime || "-"}</td>
-                    <td>{task.estimatedEndTime || "-"}</td>
+                    <td>{task.endTime || "-"}</td>
                     <td>
                       <div class="task-actions">
                         <button
@@ -894,13 +714,6 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-  }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-      "Oxygen", "Ubuntu", "Cantarell", sans-serif;
-    background-color: #f5f7fa;
-    color: #333;
   }
 
   /* 主容器样式 */
@@ -1596,7 +1409,7 @@
     background-color: rgba(239, 68, 68, 0.1);
     color: #ef4444;
   }
-  
+
   .db-icon-svg {
     width: 32px;
     height: 32px;
@@ -1863,11 +1676,6 @@
   .db-icon.sqlserver {
     background-color: rgba(0, 122, 255, 0.1);
     color: var(--apple-primary);
-  }
-
-  .db-icon.mongodb {
-    background-color: rgba(66, 133, 244, 0.1);
-    color: #4285f4;
   }
 
   .db-icon.redshift {

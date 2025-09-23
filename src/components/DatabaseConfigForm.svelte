@@ -560,15 +560,9 @@
 
   .form-group input.error,
   .form-group select.error,
-  .form-group textarea.error {
-    border-color: #f5222d;
-  }
 
   .form-group input.error:focus,
   .form-group select.error:focus,
-  .form-group textarea.error:focus {
-    box-shadow: 0 0 0 2px rgba(245, 34, 45, 0.2);
-  }
 
   .error-message {
     display: block;
@@ -580,10 +574,6 @@
   .file-input-container {
     display: flex;
     gap: 8px;
-  }
-
-  .file-input-container input {
-    flex: 1;
   }
 
   .browse-button {
