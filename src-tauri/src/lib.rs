@@ -104,6 +104,9 @@ async fn save_database_config_to_db(
     let created_at = config.get("createdAt").and_then(|v| v.as_str()).ok_or_else(|| "Missing createdAt".to_string())?;
     let updated_at = config.get("updatedAt").and_then(|v| v.as_str()).ok_or_else(|| "Missing updatedAt".to_string())?;
     
+    // 记录时间戳信息用于调试
+    println!("保存数据库配置 - ID: {}, 创建时间: {}, 更新时间: {}", id, created_at, updated_at);
+    
     // 创建DatabaseConfig结构体
     let db_config = DatabaseConfig {
         id: id.to_string(),

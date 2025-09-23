@@ -2,7 +2,7 @@
 
 use std::sync::{Arc, Mutex, MutexGuard};
 use super::connection::{DatabaseConnection, DatabaseConnectionType};
-use rusqlite::{Connection as RusqliteConnection, OpenFlags};
+use rusqlite::{Connection as RusqliteConnection, OpenFlags, OptionalExtension};
 use serde::{Serialize, Deserialize};
 
 // SQLite数据库配置
@@ -95,37 +95,79 @@ impl SQLiteConnection {
         let conn = self.get_connection()?;
         let conn = conn.as_ref().ok_or("Connection is closed".to_string())?;
         
-        conn.execute(
-            "INSERT INTO database_configs (id, name, type, host, port, username, password, database, ssl, extra, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                name = excluded.name,
-                type = excluded.type,
-                host = excluded.host,
-                port = excluded.port,
-                username = excluded.username,
-                password = excluded.password,
-                database = excluded.database,
-                ssl = excluded.ssl,
-                extra = excluded.extra,
-                updated_at = excluded.updated_at",
-            ( 
-                &config.id, 
-                &config.name, 
-                &config.r#type, 
-                &config.host, 
-                &config.port, 
-                &config.username, 
-                &config.password, 
-                &config.database, 
-                &(config.ssl as i32), 
-                &config.extra, 
-                &config.created_at, 
-                &config.updated_at 
-            ),
-        ).map_err(|e| format!("Failed to save database config: {}", e))?;
+        // 记录配置信息用于调试
+        println!("SQLite: 保存数据库配置 - ID: {}, 创建时间: {}, 更新时间: {}", config.id, config.created_at, config.updated_at);
         
-        Ok(())
+        // 首先检查记录是否存在
+        let existing_created_at: Option<String> = conn.query_row(
+            "SELECT created_at FROM database_configs WHERE id = ?",
+            [&config.id],
+            |row| row.get(0),
+        ).optional().map_err(|e| format!("查询现有记录失败: {}", e))?;
+        
+        let result = if existing_created_at.is_some() {
+            // 记录已存在，执行更新操作（不更新created_at字段）
+            println!("SQLite: 更新现有记录，保持原有创建时间: {}", existing_created_at.unwrap());
+            conn.execute(
+                "UPDATE database_configs SET
+                    name = ?,
+                    type = ?,
+                    host = ?,
+                    port = ?,
+                    username = ?,
+                    password = ?,
+                    database = ?,
+                    ssl = ?,
+                    extra = ?,
+                    updated_at = ?
+                WHERE id = ?",
+                ( 
+                    &config.name, 
+                    &config.r#type, 
+                    &config.host, 
+                    &config.port, 
+                    &config.username, 
+                    &config.password, 
+                    &config.database, 
+                    &(config.ssl as i32), 
+                    &config.extra, 
+                    &config.updated_at,
+                    &config.id
+                ),
+            )
+        } else {
+            // 记录不存在，执行插入操作
+            println!("SQLite: 插入新记录，创建时间: {}", config.created_at);
+            conn.execute(
+                "INSERT INTO database_configs (id, name, type, host, port, username, password, database, ssl, extra, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                ( 
+                    &config.id, 
+                    &config.name, 
+                    &config.r#type, 
+                    &config.host, 
+                    &config.port, 
+                    &config.username, 
+                    &config.password, 
+                    &config.database, 
+                    &(config.ssl as i32), 
+                    &config.extra, 
+                    &config.created_at, 
+                    &config.updated_at 
+                ),
+            )
+        };
+        
+        match result {
+            Ok(rows_affected) => {
+                println!("SQLite: 配置保存成功，影响行数: {}", rows_affected);
+                Ok(())
+            },
+            Err(e) => {
+                println!("SQLite: 配置保存失败: {}", e);
+                Err(format!("Failed to save database config: {}", e))
+            }
+        }
     }
     
     // 获取所有数据库配置

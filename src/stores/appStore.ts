@@ -30,53 +30,69 @@ export async function saveDatabaseConfig(
   config: DatabaseConfig
 ): Promise<void> {
   try {
-    // 首先测试数据库连接是否有效
-    let connectionId;
-    if (config.type === DatabaseType.Redis) {
-      // 对于Redis，我们使用url格式
-      const redisUrl = `redis://${
-        config.username ? `${config.username}:${config.password}@` : ""
-      }${config.host}:${config.port}`;
-      connectionId = await invoke("add_redis_connection", {
-        url: redisUrl,
-        db: config.database ? parseInt(config.database) : undefined,
-      });
-    } else if (config.type === DatabaseType.MySQL) {
-      connectionId = await invoke("add_mysql_connection", {
-        host: config.host,
-        port: config.port,
-        username: config.username,
-        password: config.password || "",
-        database: config.database || "",
-      });
-    } else if (config.type === DatabaseType.PostgreSQL) {
-      // 注意：PostgreSQL在当前后端实现中可能不被支持
-      throw new Error("PostgreSQL is not yet supported in the backend");
+    let connectionId: string;
+    
+    // 判断是新建还是编辑现有配置
+    const isNewConfig = !config.id || config.id.startsWith('db_');
+    
+    if (isNewConfig) {
+      // 新建配置：创建新的数据库连接
+      if (config.type === DatabaseType.Redis) {
+        // 对于Redis，我们使用url格式
+        const redisUrl = `redis://${
+          config.username ? `${config.username}:${config.password}@` : ""
+        }${config.host}:${config.port}`;
+        connectionId = await invoke("add_redis_connection", {
+          url: redisUrl,
+          db: config.database ? parseInt(config.database) : undefined,
+        });
+      } else if (config.type === DatabaseType.MySQL) {
+        connectionId = await invoke("add_mysql_connection", {
+          host: config.host,
+          port: config.port,
+          username: config.username,
+          password: config.password || "",
+          database: config.database || "",
+        });
+      } else if (config.type === DatabaseType.PostgreSQL) {
+        // 注意：PostgreSQL在当前后端实现中可能不被支持
+        throw new Error("PostgreSQL is not yet supported in the backend");
+      } else {
+        throw new Error(`Unsupported database type: ${config.type}`);
+      }
+      console.log("New database connection established, connection ID:", connectionId);
     } else {
-      throw new Error(`Unsupported database type: ${config.type}`);
+      // 编辑现有配置：使用现有的连接ID
+      connectionId = config.id;
+      console.log("Updating existing database configuration, connection ID:", connectionId);
     }
 
-    console.log("Database connection established, connection ID:", connectionId);
-
-    // 创建一个新的配置对象，使用后端返回的ID
-    const configWithBackendId = {
+    // 创建配置对象，使用正确的ID
+    const configToSave = {
       ...config,
-      id: connectionId as string, // 后端返回的ID
+      id: connectionId,
     };
 
     // 将配置保存到SQLite数据库
-    await invoke("save_database_config_to_db", {
-      config: configWithBackendId
+    const savedId = await invoke<string>("save_database_config_to_db", {
+      config: configToSave
     });
 
-    // 更新本地存储
+    // 验证保存的ID与我们的配置ID一致
+    if (savedId !== configToSave.id) {
+      console.warn("Backend returned different ID than expected:", savedId, "vs", configToSave.id);
+    }
+
+    // 更新本地存储 - 使用原始配置对象（保持所有字段包括时间戳）
     databases.update((prev) => {
-      // 检查是否已有相同后端ID的配置
-      const index = prev.findIndex((db) => db.id === configWithBackendId.id);
+      // 检查是否已有相同ID的配置
+      const index = prev.findIndex((db) => db.id === configToSave.id);
       if (index !== -1) {
-        prev[index] = configWithBackendId;
+        // 更新现有配置
+        prev[index] = configToSave;
       } else {
-        prev.push(configWithBackendId);
+        // 添加新配置
+        prev.push(configToSave);
       }
       return [...prev];
     });
