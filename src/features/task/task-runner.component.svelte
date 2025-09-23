@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import type { PipelineTask } from "../types/database";
+  import type { PipelineTask } from "../../shared/types/database.types";
   import {
     selectedTaskId,
     pipelineTasks,
     startPipelineTask,
-  } from "../stores/appStore";
-  import LoadingAnimation from "./LoadingAnimation.svelte";
+  } from "../../shared/stores/app.store";
+  import { LoadingAnimation } from '../loading';
 
   // Props
   export let taskId: string | null = null;

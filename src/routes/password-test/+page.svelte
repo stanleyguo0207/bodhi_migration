@@ -1,5 +1,5 @@
 <script>
-  import DatabaseConfigForm from "../../components/DatabaseConfigForm.svelte";
+  import { DatabaseConfigForm } from "../../features/database";
   
   let showForm = true;
   

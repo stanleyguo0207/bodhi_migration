@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import type { PipelineTask, MigrationStrategy } from "../types/database";
+  import type { PipelineTask, MigrationStrategy } from "../../shared/types/database.types";
   import {
     databases,
     strategies,
     createPipelineTask,
-  } from "../stores/appStore";
+  } from "../../shared/stores/app.store";
 
   // 表单数据
   let formData = {

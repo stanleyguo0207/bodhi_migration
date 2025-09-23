@@ -1,6 +1,5 @@
 <script lang="ts">
-  import LoadingAnimation from '../../components/LoadingAnimation.svelte';
-  import ModernLoadingAnimation from '../../components/ModernLoadingAnimation.svelte';
+  import { LoadingAnimation, ModernLoadingAnimation } from '../../features/loading';
   
   let selectedStyle = 'rings';
   let selectedSize = 'medium';
@@ -21,8 +20,8 @@
 
   <div class="controls">
     <div class="control-group">
-      <label>Animation Style:</label>
-      <select bind:value={selectedStyle}>
+      <label for="animation-style">Animation Style:</label>
+      <select id="animation-style" bind:value={selectedStyle}>
         <option value="rings">Rings</option>
         <option value="dots">Dots</option>
         <option value="wave">Wave</option>
@@ -30,8 +29,8 @@
     </div>
 
     <div class="control-group">
-      <label>Size:</label>
-      <select bind:value={selectedSize}>
+      <label for="size-select">Size:</label>
+      <select id="size-select" bind:value={selectedSize}>
         <option value="small">Small</option>
         <option value="medium">Medium</option>
         <option value="large">Large</option>
@@ -39,8 +38,8 @@
     </div>
 
     <div class="control-group">
-      <label>Color:</label>
-      <input type="color" bind:value={customColor} />
+      <label for="color-picker">Color:</label>
+      <input id="color-picker" type="color" bind:value={customColor} />
     </div>
 
     <div class="control-group">
@@ -52,8 +51,8 @@
 
     {#if showText}
       <div class="control-group">
-        <label>Text:</label>
-        <input type="text" bind:value={customText} placeholder="Loading text..." />
+        <label for="loading-text">Text:</label>
+        <input id="loading-text" type="text" bind:value={customText} placeholder="Loading text..." />
       </div>
     {/if}
   </div>

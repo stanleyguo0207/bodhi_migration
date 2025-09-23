@@ -6,8 +6,8 @@
     appLoading,
     loadDatabaseConfigs,
     removeDatabaseConfig,
-  } from "../stores/appStore";
-  import type { DatabaseConfig, PipelineTask } from "../types/database";
+  } from "../../shared/stores/app.store";
+  import type { DatabaseConfig, PipelineTask } from "../../shared/types/database.types";
   import { Chart, registerables } from "chart.js";
   import type { ChartConfiguration } from "chart.js";
 
@@ -2095,9 +2095,9 @@
     transition: all 0.3s ease;
   }
 
-  .database-card:hover .database-actions {
+  /* .database-card:hover .database-actions {
     border-top-color: rgba(0, 122, 255, 0.1);
-  }
+  } */
 
   .action-buttons-left {
     display: flex;

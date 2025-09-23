@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import { type DatabaseConfig, DatabaseType } from "../types/database";
-  import { saveDatabaseConfig } from "../stores/appStore";
+  import { type DatabaseConfig, DatabaseType } from "../../shared/types/database.types";
+  import { saveDatabaseConfig } from "../../shared/stores/app.store";
 
   // Props
   export let databaseId: string | null = null;

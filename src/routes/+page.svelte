@@ -1,12 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import { loadDatabaseConfigs, appLoading } from "../stores/appStore";
-  import MainDashboard from "../components/MainDashboard.svelte";
-  import DatabaseConfigForm from "../components/DatabaseConfigForm.svelte";
-  import TaskCreationForm from "../components/TaskCreationForm.svelte";
-  import TaskRunner from "../components/TaskRunner.svelte";
-  import LoadingAnimation from "../components/LoadingAnimation.svelte";
+  import { loadDatabaseConfigs, appLoading } from "../shared/stores/app.store";
+  import { MainDashboard, DatabaseConfigForm, TaskCreationForm, TaskRunner, LoadingAnimation } from "../features";
 
   // 应用状态
   let currentView = "dashboard"; // dashboard, databaseConfig, migrationPipeline, taskManagement

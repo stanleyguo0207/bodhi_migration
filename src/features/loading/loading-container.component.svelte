@@ -1,20 +1,20 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { loadingManager, type LoadingConfig } from '../utils/loadingUtils';
-  import LoadingAnimation from './LoadingAnimation.svelte';
-  import ModernLoadingAnimation from './ModernLoadingAnimation.svelte';
+  import { loadingManager, type LoadingConfig } from './utils/loading.utils';
+  import LoadingAnimation from './loading-animation.component.svelte';
+  import ModernLoadingAnimation from './modern-loading-animation.component.svelte';
   
   export let config: Partial<LoadingConfig> = {};
   export let type: 'basic' | 'modern' = 'modern';
   export let overlay: boolean = false;
   export let fullscreen: boolean = false;
   
-  let loadingState = { isLoading: false, config: config };
+  let loadingState = { isLoading: false, config: config as Partial<LoadingConfig> };
   let unsubscribe: (() => void) | null = null;
   
   onMount(() => {
     // Subscribe to loading manager state
-    unsubscribe = loadingManager.subscribe((isLoading, managerConfig) => {
+    unsubscribe = loadingManager.subscribe((isLoading: boolean, managerConfig: LoadingConfig) => {
       loadingState = { isLoading, config: { ...managerConfig, ...config } };
     });
     

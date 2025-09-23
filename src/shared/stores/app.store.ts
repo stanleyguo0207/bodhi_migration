@@ -1,11 +1,11 @@
 import { writable } from "svelte/store";
 import { invoke } from "@tauri-apps/api/core";
-import type {
-  DatabaseConfig,
-  PipelineTask,
-  MigrationStrategy,
-} from "../types/database";
-import { DatabaseType } from "../types/database";
+import  {
+  DatabaseType,
+  type DatabaseConfig,
+  type PipelineTask,
+  type MigrationStrategy,
+} from "../types/database.types";
 
 // 数据库配置存储
 export const databases = writable<DatabaseConfig[]>([]);
