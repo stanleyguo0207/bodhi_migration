@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { invoke } from "@tauri-apps/api/core";
+  import { loadDatabaseConfigs, appLoading } from "../stores/appStore";
   import MainDashboard from "../components/MainDashboard.svelte";
   import DatabaseConfigForm from "../components/DatabaseConfigForm.svelte";
   import TaskCreationForm from "../components/TaskCreationForm.svelte";
@@ -61,8 +63,18 @@
   };
 
   // 初始化应用
-  onMount(() => {
-    // 这里可以添加应用初始化逻辑
+  onMount(async () => {
+    try {
+      // 调用后端的init_app函数初始化SQLite配置数据库
+      await invoke("init_app");
+      // 初始化成功后加载数据库配置
+      await loadDatabaseConfigs();
+    } catch (error) {
+      console.error("Failed to initialize application:", error);
+    } finally {
+      // 设置加载状态为false
+      appLoading.set(false);
+    }
   });
 </script>
 

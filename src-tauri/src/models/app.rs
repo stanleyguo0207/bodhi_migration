@@ -11,6 +11,8 @@ pub struct AppState {
     pub conn_manager: Arc<RwLock<DatabaseConnectionManager>>,
     // 迁移流水线
     pub migration_pipeline: Arc<RwLock<MigrationPipeline>>,
+    // SQLite配置数据库的连接ID
+    pub sqlite_config_connection_id: Option<String>,
 }
 
 impl AppState {
@@ -24,6 +26,7 @@ impl AppState {
         Self {
             conn_manager,
             migration_pipeline,
+            sqlite_config_connection_id: None,
         }
     }
 }

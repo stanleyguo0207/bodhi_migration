@@ -30,19 +30,19 @@ export async function saveDatabaseConfig(
   config: DatabaseConfig
 ): Promise<void> {
   try {
-    // 根据数据库类型调用不同的后端API
-    let result;
+    // 首先测试数据库连接是否有效
+    let connectionId;
     if (config.type === DatabaseType.Redis) {
       // 对于Redis，我们使用url格式
       const redisUrl = `redis://${
         config.username ? `${config.username}:${config.password}@` : ""
       }${config.host}:${config.port}`;
-      result = await invoke("add_redis_connection", {
+      connectionId = await invoke("add_redis_connection", {
         url: redisUrl,
         db: config.databaseName ? parseInt(config.databaseName) : undefined,
       });
     } else if (config.type === DatabaseType.MySQL) {
-      result = await invoke("add_mysql_connection", {
+      connectionId = await invoke("add_mysql_connection", {
         host: config.host,
         port: config.port,
         username: config.username,
@@ -56,13 +56,18 @@ export async function saveDatabaseConfig(
       throw new Error(`Unsupported database type: ${config.type}`);
     }
 
-    console.log("Database config saved, connection ID:", result);
+    console.log("Database connection established, connection ID:", connectionId);
 
     // 创建一个新的配置对象，使用后端返回的ID
     const configWithBackendId = {
       ...config,
-      id: result as string, // 后端返回的ID
+      id: connectionId as string, // 后端返回的ID
     };
+
+    // 将配置保存到SQLite数据库
+    await invoke("save_database_config_to_db", {
+      config: configWithBackendId
+    });
 
     // 更新本地存储
     databases.update((prev) => {
@@ -84,8 +89,8 @@ export async function saveDatabaseConfig(
 // 从存储加载所有数据库配置
 export async function loadDatabaseConfigs(): Promise<void> {
   try {
-    // 通过Tauri调用后端API加载数据库配置
-    const configs = await invoke("get_all_database_configs");
+    // 通过Tauri调用后端API加载数据库配置（从SQLite）
+    const configs = await invoke("get_all_database_configs_from_db");
     databases.set(configs as DatabaseConfig[]);
   } catch (error) {
     console.error("Failed to load database configs:", error);
@@ -130,6 +135,9 @@ export async function removeDatabaseConfig(id: string): Promise<void> {
   try {
     // 移除数据库连接
     await invoke("remove_database_connection", { id });
+
+    // 从SQLite数据库中删除配置
+    await invoke("delete_database_config_from_db", { id });
 
     // 从本地存储中移除
     databases.update((prev) => prev.filter((db) => db.id !== id));

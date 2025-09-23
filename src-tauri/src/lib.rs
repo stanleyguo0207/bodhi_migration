@@ -11,9 +11,10 @@ mod migration;
 mod models;
 
 // 导入具体类型
-use database::{connection::DatabaseConnectionEnum, sqlite::SQLiteConnection, sqlite::SQLiteConfig, mysql::MySQLConnection, mysql::MySQLConfig, redis::RedisConnection, redis::RedisConfig};
+use database::{connection::DatabaseConnectionEnum, sqlite::{SQLiteConnection, SQLiteConfig, DatabaseConfig}, mysql::MySQLConnection, mysql::MySQLConfig, redis::RedisConnection, redis::RedisConfig};
 use migration::{MigrationTask, MigrationStrategyEnum, strategy::{FullMigrationStrategy, IncrementalMigrationStrategy, CustomSQLMigrationStrategy}};
 use models::AppState;
+use tauri::utils::platform::current_exe;
 
 // 初始化应用状态
 #[derive(Clone, serde::Serialize)]
@@ -22,10 +23,40 @@ struct InitResult {
     message: String,
 }
 
+// 初始化应用数据库
 #[tauri::command]
-async fn init_app(_: State<'_, Arc<RwLock<AppState>>>) -> Result<InitResult, String> {
+async fn init_app(state: State<'_, Arc<RwLock<AppState>>>) -> Result<InitResult, String> {
     // 应用初始化逻辑
-    // 这里可以加载保存的配置、初始化数据库等
+    // 获取应用程序目录
+    let exe_path = current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
+    let app_dir = exe_path.parent()
+        .ok_or_else(|| "Failed to get executable directory".to_string())?
+        .join("bodhi_migration");
+    
+    // 创建目录（如果不存在）
+    std::fs::create_dir_all(&app_dir)
+        .map_err(|e| format!("Failed to create app directory: {}", e))?;
+    
+    // 数据库文件路径
+    let db_path = app_dir.join("bodhi_migration.db").to_str()
+        .ok_or_else(|| "Failed to convert path to string".to_string())?
+        .to_string();
+    
+    // 创建SQLite连接
+    let config = SQLiteConfig {
+        db_path: db_path.clone(),
+        read_only: false,
+    };
+    
+    let connection = SQLiteConnection::new(config)
+        .map_err(|e| format!("Failed to create SQLite connection: {}", e))?;
+    
+    // 将SQLite连接添加到连接管理器
+    let conn_manager = state.read().await.conn_manager.clone();
+    let connection_id = conn_manager.write().await.add_connection(DatabaseConnectionEnum::SQLite(connection)).await;
+    
+    // 保存连接ID到应用状态
+    state.write().await.sqlite_config_connection_id = Some(connection_id);
     
     Ok(InitResult {
         success: true,
@@ -34,6 +65,129 @@ async fn init_app(_: State<'_, Arc<RwLock<AppState>>>) -> Result<InitResult, Str
 }
 
 // 数据库连接管理命令
+
+// 保存数据库配置到SQLite
+#[tauri::command]
+async fn save_database_config_to_db(
+    config: serde_json::Value,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<String, String> {
+    // 确保应用有SQLite连接
+    let app_state = state.read().await;
+    let connection_id = app_state.sqlite_config_connection_id.clone()
+        .ok_or_else(|| "SQLite config connection not initialized".to_string())?;
+    
+    let conn_manager = app_state.conn_manager.clone();
+    
+    // 通过保存的ID获取SQLite连接
+    let sqlite_conn_enum = conn_manager.read().await.get_connection(&connection_id).await
+        .ok_or_else(|| "No SQLite connection found".to_string())?;
+    
+    // 转换为SQLiteConnection
+    let sqlite_conn = if let DatabaseConnectionEnum::SQLite(conn) = sqlite_conn_enum {
+        conn
+    } else {
+        return Err("Failed to get SQLite connection".to_string());
+    };
+    
+    // 解析配置
+    let id = config.get("id").and_then(|v| v.as_str()).ok_or_else(|| "Missing id".to_string())?;
+    let name = config.get("name").and_then(|v| v.as_str()).ok_or_else(|| "Missing name".to_string())?;
+    let r#type = config.get("type").and_then(|v| v.as_str()).ok_or_else(|| "Missing type".to_string())?;
+    let host = config.get("host").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let port = config.get("port").and_then(|v| v.as_i64());
+    let username = config.get("username").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let password = config.get("password").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let database = config.get("database").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let ssl = config.get("ssl").and_then(|v| v.as_bool()).unwrap_or(false);
+    let extra = config.get("extra").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let created_at = config.get("createdAt").and_then(|v| v.as_str()).ok_or_else(|| "Missing createdAt".to_string())?;
+    let updated_at = config.get("updatedAt").and_then(|v| v.as_str()).ok_or_else(|| "Missing updatedAt".to_string())?;
+    
+    // 创建DatabaseConfig结构体
+    let db_config = DatabaseConfig {
+        id: id.to_string(),
+        name: name.to_string(),
+        r#type: r#type.to_string(),
+        host,
+        port,
+        username,
+        password,
+        database,
+        ssl,
+        extra,
+        created_at: created_at.to_string(),
+        updated_at: updated_at.to_string(),
+    };
+    
+    // 保存配置
+    sqlite_conn.save_database_config(&db_config)?;
+    
+    Ok(id.to_string())
+}
+
+// 从SQLite获取所有数据库配置
+#[tauri::command]
+async fn get_all_database_configs_from_db(
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<serde_json::Value, String> {
+    // 确保应用有SQLite连接
+    let app_state = state.read().await;
+    let connection_id = app_state.sqlite_config_connection_id.clone()
+        .ok_or_else(|| "SQLite config connection not initialized".to_string())?;
+    
+    let conn_manager = app_state.conn_manager.clone();
+    
+    // 通过保存的ID获取SQLite连接
+    let sqlite_conn_enum = conn_manager.read().await.get_connection(&connection_id).await
+        .ok_or_else(|| "No SQLite connection found".to_string())?;
+    
+    // 转换为SQLiteConnection
+    let sqlite_conn = if let DatabaseConnectionEnum::SQLite(conn) = sqlite_conn_enum {
+        conn
+    } else {
+        return Err("Failed to get SQLite connection".to_string());
+    };
+    
+    // 获取所有配置
+    let configs = sqlite_conn.get_all_database_configs()?;
+    
+    // 转换为JSON
+    let configs_json = serde_json::to_value(configs)
+        .map_err(|e| format!("Failed to serialize configs: {}", e))?;
+    
+    Ok(configs_json)
+}
+
+// 从SQLite删除数据库配置
+#[tauri::command]
+async fn delete_database_config_from_db(
+    id: String,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<bool, String> {
+    // 确保应用有SQLite连接
+    let app_state = state.read().await;
+    let connection_id = app_state.sqlite_config_connection_id.clone()
+        .ok_or_else(|| "SQLite config connection not initialized".to_string())?;
+    
+    let conn_manager = app_state.conn_manager.clone();
+    
+    // 通过保存的ID获取SQLite连接
+    let sqlite_conn_enum = conn_manager.read().await.get_connection(&connection_id).await
+        .ok_or_else(|| "No SQLite connection found".to_string())?;
+    
+    // 转换为SQLiteConnection
+    let sqlite_conn = if let DatabaseConnectionEnum::SQLite(conn) = sqlite_conn_enum {
+        conn
+    } else {
+        return Err("Failed to get SQLite connection".to_string());
+    };
+    
+    // 删除配置
+    sqlite_conn.delete_database_config(&id)?;
+    
+    Ok(true)
+}
 
 // 添加SQLite连接
 #[tauri::command]
@@ -282,6 +436,10 @@ pub fn run() {
             add_redis_connection,
             test_database_connection,
             remove_database_connection,
+            // 数据库配置持久化命令
+            save_database_config_to_db,
+            get_all_database_configs_from_db,
+            delete_database_config_from_db,
             // 迁移任务管理命令
             create_migration_task,
             start_migration_task,
