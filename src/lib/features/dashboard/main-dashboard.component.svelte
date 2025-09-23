@@ -6,8 +6,8 @@
     appLoading,
     loadDatabaseConfigs,
     removeDatabaseConfig,
-  } from "../../shared/stores/app.store";
-  import type { DatabaseConfig, PipelineTask } from "../../shared/types/database.types";
+  } from "$lib/stores/app.store";
+  import type { DatabaseConfig, PipelineTask } from "$lib/types/database.types";
   import { Chart, registerables } from "chart.js";
   import type { ChartConfiguration } from "chart.js";
 

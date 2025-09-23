@@ -1,6 +1,6 @@
 // Database utility functions
-import type { DatabaseConfig } from '../../../shared/types/database.types';
-import { DatabaseType } from '../types/database.types';
+import type { DatabaseConfig } from '$lib/types/database.types';
+import { DatabaseType } from '$lib/types/database.types';
 
 export function validateDatabaseConfig(config: Partial<DatabaseConfig>): string[] {
   const errors: string[] = [];

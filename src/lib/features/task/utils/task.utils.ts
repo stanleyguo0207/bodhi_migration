@@ -1,5 +1,5 @@
 // Task utility functions
-import type { PipelineTask } from '../../../shared/types/database.types';
+import type { PipelineTask } from '$lib/types/database.types';
 
 export function getTaskStatusColor(status: string): string {
   const colorMap = {

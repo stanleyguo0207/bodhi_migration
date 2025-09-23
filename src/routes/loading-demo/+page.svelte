@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LoadingAnimation, ModernLoadingAnimation } from '../../features/loading';
+  import { LoadingAnimation, ModernLoadingAnimation } from '$lib/features/loading';
   
   let selectedStyle = 'rings';
   let selectedSize = 'medium';

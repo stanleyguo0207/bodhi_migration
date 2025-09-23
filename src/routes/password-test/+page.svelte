@@ -1,5 +1,5 @@
 <script>
-  import { DatabaseConfigForm } from "../../features/database";
+  import { DatabaseConfigForm } from "$lib/features/database";
   
   let showForm = true;
   

@@ -1,5 +1,5 @@
-// Loading utility functions and configurations
-export interface LoadingConfig {
+// Loading utility functions and configurations (for global use)
+export interface GlobalLoadingConfig {
   size?: 'small' | 'medium' | 'large';
   color?: string;
   text?: string;
@@ -7,7 +7,7 @@ export interface LoadingConfig {
   duration?: number;
 }
 
-export const defaultLoadingConfig: LoadingConfig = {
+export const defaultGlobalLoadingConfig: GlobalLoadingConfig = {
   size: 'medium',
   color: 'var(--apple-primary)',
   text: '',
@@ -86,10 +86,10 @@ export const loadingPresets = {
 };
 
 // Helper function to merge configurations
-export function mergeLoadingConfig(
-  baseConfig: LoadingConfig,
-  overrideConfig?: Partial<LoadingConfig>
-): LoadingConfig {
+export function mergeGlobalLoadingConfig(
+  baseConfig: GlobalLoadingConfig,
+  overrideConfig?: Partial<GlobalLoadingConfig>
+): GlobalLoadingConfig {
   return {
     ...baseConfig,
     ...overrideConfig
@@ -99,20 +99,22 @@ export function mergeLoadingConfig(
 // Helper function to get preset configuration
 export function getLoadingPreset(
   presetName: keyof typeof loadingPresets,
-  overrides?: Partial<LoadingConfig>
-): LoadingConfig {
-  return mergeLoadingConfig(loadingPresets[presetName] as LoadingConfig, overrides);
+  overrides?: Partial<GlobalLoadingConfig>
+): GlobalLoadingConfig {
+  return mergeGlobalLoadingConfig(loadingPresets[presetName] as GlobalLoadingConfig, overrides);
 }
 
 // Loading state manager for complex scenarios
 export class LoadingStateManager {
   private isLoading = false;
-  private config: LoadingConfig = defaultLoadingConfig;
-  private subscribers: Array<(loading: boolean, config: LoadingConfig) => void> = [];
+  private config: GlobalLoadingConfig = defaultGlobalLoadingConfig;
+  private subscribers: Array<(loading: boolean, config: GlobalLoadingConfig) => void> = [];
 
-  startLoading(config?: Partial<LoadingConfig>) {
-    this.isLoading = true;
-    this.config = { ...this.config, ...config };
+  setLoading(loading: boolean, config?: Partial<GlobalLoadingConfig>): void {
+    this.isLoading = loading;
+    if (config) {
+      this.config = { ...this.config, ...config };
+    }
     this.notifySubscribers();
   }
 
@@ -121,14 +123,12 @@ export class LoadingStateManager {
     this.notifySubscribers();
   }
 
-  updateConfig(config: Partial<LoadingConfig>) {
+  updateConfig(config: Partial<GlobalLoadingConfig>): void {
     this.config = { ...this.config, ...config };
-    if (this.isLoading) {
-      this.notifySubscribers();
-    }
+    this.notifySubscribers();
   }
 
-  subscribe(callback: (loading: boolean, config: LoadingConfig) => void) {
+  subscribe(callback: (loading: boolean, config: GlobalLoadingConfig) => void): () => void {
     this.subscribers.push(callback);
     // Immediately notify with current state
     callback(this.isLoading, this.config);
@@ -157,4 +157,4 @@ export class LoadingStateManager {
 }
 
 // Export singleton instance
-export const loadingManager = new LoadingStateManager();
+export const globalLoadingManager = new LoadingStateManager();
