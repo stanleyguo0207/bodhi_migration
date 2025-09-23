@@ -1,10 +1,8 @@
 // 数据库类型定义
 export enum DatabaseType {
-  MySQL = 'mysql',
-  Redis = 'redis',
-  SQLite = 'sqlite',
-  PostgreSQL = 'postgresql',
-  MongoDB = 'mongodb'
+  MySQL = "mysql",
+  Redis = "redis",
+  PostgreSQL = "postgresql",
 }
 
 // 数据库连接配置接口
@@ -17,7 +15,6 @@ export interface DatabaseConfig {
   username?: string;
   password?: string;
   database?: string;
-  path?: string; // 用于SQLite
   ssl?: boolean;
   extra?: Record<string, string>;
   createdAt: string;
@@ -28,7 +25,7 @@ export interface DatabaseConfig {
 export interface MigrationStrategy {
   id: string;
   name: string;
-  type: 'full' | 'incremental' | 'delta';
+  type: "full" | "incremental" | "delta";
   batchSize?: number;
   retryCount?: number;
   timeout?: number;
@@ -46,7 +43,7 @@ export interface PipelineTask {
   sourceDbId: string;
   targetDbId: string;
   strategyId: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'paused';
+  status: "pending" | "running" | "completed" | "failed" | "paused";
   progress: number;
   startTime?: string;
   endTime?: string;
@@ -54,7 +51,7 @@ export interface PipelineTask {
   logs?: Array<{
     timestamp: string;
     message: string;
-    level: 'info' | 'warning' | 'error';
+    level: "info" | "warning" | "error";
   }>;
   createdAt: string;
   updatedAt: string;

@@ -105,7 +105,11 @@
 
   <main class="app-main">
     {#if showAddDatabaseForm}
-      <DatabaseConfigForm databaseId={selectedDatabaseId} />
+      <DatabaseConfigForm
+        databaseId={selectedDatabaseId}
+        onClose={() => (showAddDatabaseForm = false)}
+        onSaveSuccess={navigateToDatabaseConfig}
+      />
     {:else if showCreateTaskForm}
       <TaskCreationForm />
     {:else if selectedTaskId}
@@ -261,29 +265,32 @@
     scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
   }
 
-  /* Icons - SF Symbols style */
+  /* Icons - Custom SVG icons */
   [class^="icon-"]::before {
     display: inline-block;
     width: 16px;
     height: 16px;
-    text-align: center;
-    font-style: normal;
-    font-variant: tabular-nums;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    content: "";
+    vertical-align: middle;
+    margin-top: -1px;
   }
 
   .icon-dashboard::before {
-    content: "📊";
+    background-image: url("/icon_dashboard.svg");
   }
 
   .icon-database::before {
-    content: "🗄️";
+    background-image: url("/icon_database.svg");
   }
 
   .icon-pipeline::before {
-    content: "⚙️";
+    background-image: url("/icon_pipeline.svg");
   }
 
   .icon-tasks::before {
-    content: "📋";
+    background-image: url("/icon_tasks.svg");
   }
 </style>

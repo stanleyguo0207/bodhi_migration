@@ -6,18 +6,19 @@
 
   // Props
   export let databaseId: string | null = null;
+  export let onClose: () => void;
+  export let onSaveSuccess: () => void;
 
   // 表单数据
   let formData: DatabaseConfig = {
     id: "",
     name: "",
-    type: DatabaseType.MySQL,
+    type: DatabaseType.Redis,
     host: "localhost",
-    port: 3306,
-    username: "root",
+    port: 6379,
+    username: "",
     password: "",
     database: "",
-    path: "",
     ssl: false,
     extra: {} as Record<string, string>,
     createdAt: new Date().toISOString(),
@@ -76,9 +77,6 @@
       case DatabaseType.PostgreSQL:
         formData.port = 5432;
         break;
-      case DatabaseType.SQLite:
-        formData.path = "./database.db";
-        break;
       default:
         break;
     }
@@ -102,28 +100,22 @@
       errors.name = "数据库名称不能为空";
     }
 
-    if (formData.type !== DatabaseType.SQLite) {
-      if (!formData.host?.trim()) {
-        errors.host = "主机地址不能为空";
-      }
+    if (!formData.host?.trim()) {
+      errors.host = "主机地址不能为空";
+    }
 
-      if (!formData.port) {
-        errors.port = "端口号不能为空";
-      } else if (isNaN(Number(formData.port))) {
-        errors.port = "端口号必须是数字";
-      }
+    if (!formData.port) {
+      errors.port = "端口号不能为空";
+    } else if (isNaN(Number(formData.port))) {
+      errors.port = "端口号必须是数字";
+    }
 
-      if (!formData.username?.trim()) {
-        errors.username = "用户名不能为空";
-      }
+    if (!formData.username?.trim()) {
+      errors.username = "用户名不能为空";
+    }
 
-      if (formData.type !== DatabaseType.Redis && !formData.database?.trim()) {
-        errors.database = "数据库名称不能为空";
-      }
-    } else {
-      if (!formData.path?.trim()) {
-        errors.path = "文件路径不能为空";
-      }
+    if (formData.type !== DatabaseType.Redis && !formData.database?.trim()) {
+      errors.database = "数据库名称不能为空";
     }
 
     if (formData.ssl) {
@@ -156,6 +148,9 @@
       await saveDatabaseConfig(formData);
 
       submitSuccess = true;
+
+      // 调用成功回调函数进行跳转
+      onSaveSuccess();
 
       // 3秒后重置成功状态
       setTimeout(() => {
@@ -214,8 +209,7 @@
 
   // 取消操作
   const handleCancel = () => {
-    // 在实际应用中，这里可能需要返回上一页或关闭表单
-    window.history.back();
+    onClose();
   };
 </script>
 
@@ -262,11 +256,12 @@
             on:change={(e) =>
               handleTypeChange(e.currentTarget.value as DatabaseType)}
           >
-            <option value={DatabaseType.MySQL}>MySQL</option>
-            <option value={DatabaseType.PostgreSQL}>PostgreSQL</option>
-            <option value={DatabaseType.MongoDB}>MongoDB</option>
-            <option value={DatabaseType.SQLite}>SQLite</option>
-            <option value={DatabaseType.Redis}>Redis</option>
+            <option value={DatabaseType.Redis} selected>Redis</option>
+            <option value={DatabaseType.MySQL} disabled>MySQL (即将支持)</option
+            >
+            <option value={DatabaseType.PostgreSQL} disabled
+              >PostgreSQL (即将支持)</option
+            >
           </select>
           {#if formErrors.type}
             <span class="error-message">{formErrors.type}</span>
@@ -275,113 +270,89 @@
       </div>
     </div>
 
-    {#if formData.type !== DatabaseType.SQLite}
-      <div class="form-section">
-        <h3>连接信息</h3>
+    <div class="form-section">
+      <h3>连接信息</h3>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="host">主机地址 <span class="required">*</span></label>
-            <input
-              type="text"
-              id="host"
-              bind:value={formData.host}
-              placeholder="请输入主机地址"
-              class={formErrors.host ? "error" : ""}
-              on:input={() => delete formErrors.host}
-            />
-            {#if formErrors.host}
-              <span class="error-message">{formErrors.host}</span>
-            {/if}
-          </div>
-
-          <div class="form-group">
-            <label for="port">端口号 <span class="required">*</span></label>
-            <input
-              type="number"
-              id="port"
-              bind:value={formData.port}
-              min="1"
-              max="65535"
-              placeholder="请输入端口号"
-              class={formErrors.port ? "error" : ""}
-              on:input={() => delete formErrors.port}
-            />
-            {#if formErrors.port}
-              <span class="error-message">{formErrors.port}</span>
-            {/if}
-          </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="host">主机地址 <span class="required">*</span></label>
+          <input
+            type="text"
+            id="host"
+            bind:value={formData.host}
+            placeholder="请输入主机地址"
+            class={formErrors.host ? "error" : ""}
+            on:input={() => delete formErrors.host}
+          />
+          {#if formErrors.host}
+            <span class="error-message">{formErrors.host}</span>
+          {/if}
         </div>
-
-        {#if formData.type !== DatabaseType.Redis}
-          <div class="form-group">
-            <label for="database"
-              >数据库名称 <span class="required">*</span></label
-            >
-            <input
-              type="text"
-              id="database"
-              bind:value={formData.database}
-              placeholder="请输入数据库名称"
-              class={formErrors.database ? "error" : ""}
-              on:input={() => delete formErrors.database}
-            />
-            {#if formErrors.database}
-              <span class="error-message">{formErrors.database}</span>
-            {/if}
-          </div>
-        {/if}
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="username">用户名 <span class="required">*</span></label>
-            <input
-              type="text"
-              id="username"
-              bind:value={formData.username}
-              placeholder="请输入用户名"
-              class={formErrors.username ? "error" : ""}
-              on:input={() => delete formErrors.username}
-            />
-            {#if formErrors.username}
-              <span class="error-message">{formErrors.username}</span>
-            {/if}
-          </div>
-
-          <div class="form-group">
-            <label for="password">密码</label>
-            <input
-              type="password"
-              id="password"
-              bind:value={formData.password}
-              placeholder="请输入密码"
-            />
-          </div>
-        </div>
-      </div>
-    {:else}
-      <div class="form-section">
-        <h3>文件信息</h3>
 
         <div class="form-group">
-          <label for="path">文件路径 <span class="required">*</span></label>
-          <div class="file-input-container">
-            <input
-              type="text"
-              id="path"
-              bind:value={formData.path}
-              placeholder="请输入SQLite文件路径"
-              class={formErrors.path ? "error" : ""}
-              on:input={() => delete formErrors.path}
-            />
-            <button type="button" class="browse-button">浏览...</button>
-          </div>
-          {#if formErrors.path}
-            <span class="error-message">{formErrors.path}</span>
+          <label for="port">端口号 <span class="required">*</span></label>
+          <input
+            type="number"
+            id="port"
+            bind:value={formData.port}
+            min="1"
+            max="65535"
+            placeholder="请输入端口号"
+            class={formErrors.port ? "error" : ""}
+            on:input={() => delete formErrors.port}
+          />
+          {#if formErrors.port}
+            <span class="error-message">{formErrors.port}</span>
           {/if}
         </div>
       </div>
-    {/if}
+
+      {#if formData.type !== DatabaseType.Redis}
+        <div class="form-group">
+          <label for="database"
+            >数据库名称 <span class="required">*</span></label
+          >
+          <input
+            type="text"
+            id="database"
+            bind:value={formData.database}
+            placeholder="请输入数据库名称"
+            class={formErrors.database ? "error" : ""}
+            on:input={() => delete formErrors.database}
+          />
+          {#if formErrors.database}
+            <span class="error-message">{formErrors.database}</span>
+          {/if}
+        </div>
+      {/if}
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="username">用户名 <span class="required">*</span></label>
+          <input
+            type="text"
+            id="username"
+            bind:value={formData.username}
+            placeholder="请输入用户名"
+            class={formErrors.username ? "error" : ""}
+            on:input={() => delete formErrors.username}
+          />
+          {#if formErrors.username}
+            <span class="error-message">{formErrors.username}</span>
+          {/if}
+        </div>
+
+        <div class="form-group">
+          <label for="password">密码</label>
+          <input
+            type="password"
+            id="password"
+            bind:value={formData.password}
+            placeholder="请输入密码"
+          />
+        </div>
+      </div>
+    </div>
 
     <div class="form-section">
       <div class="checkbox-group">

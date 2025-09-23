@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- 背景透明 -->
+  <rect width="1024" height="1024" fill="none"/>
+  <!-- 任务容器 -->
+  <rect x="128" y="128" width="768" height="768" rx="128" ry="128" fill="rgba(236, 72, 153, 0.1)"/>
+  <!-- 任务项 -->
+  <rect x="192" y="256" width="96" height="96" rx="32" ry="32" fill="rgba(236, 72, 153, 0.8)"/>
+  <line x1="320" y1="304" x2="832" y2="304" stroke="rgba(236, 72, 153, 0.6)" stroke-width="32"/>
+  
+  <rect x="192" y="448" width="96" height="96" rx="32" ry="32" fill="rgba(236, 72, 153, 0.8)"/>
+  <line x1="320" y1="496" x2="768" y2="496" stroke="rgba(236, 72, 153, 0.6)" stroke-width="32"/>
+  
+  <rect x="192" y="640" width="96" height="96" rx="32" ry="32" fill="rgba(236, 72, 153, 0.5)"/>
+  <line x1="320" y1="688" x2="704" y2="688" stroke="rgba(236, 72, 153, 0.4)" stroke-width="32"/>
+</svg>

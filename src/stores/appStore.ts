@@ -1,6 +1,11 @@
-import { writable } from 'svelte/store';
-import { invoke } from '@tauri-apps/api/core';
-import type { DatabaseConfig, PipelineTask, MigrationStrategy } from '../types/database';
+import { writable } from "svelte/store";
+import { invoke } from "@tauri-apps/api/core";
+import type {
+  DatabaseConfig,
+  PipelineTask,
+  MigrationStrategy,
+} from "../types/database";
+import { DatabaseType } from "../types/database";
 
 // 数据库配置存储
 export const databases = writable<DatabaseConfig[]>([]);
@@ -21,24 +26,57 @@ export const selectedTaskId = writable<string | null>(null);
 export const appLoading = writable(true);
 
 // 保存数据库配置到存储
-export async function saveDatabaseConfig(config: DatabaseConfig): Promise<void> {
+export async function saveDatabaseConfig(
+  config: DatabaseConfig
+): Promise<void> {
   try {
-    // 这里会通过Tauri调用后端API保存到SQLite数据库
-    const result = await invoke('save_database_config', { config });
-    console.log('Database config saved:', result);
+    // 根据数据库类型调用不同的后端API
+    let result;
+    if (config.type === DatabaseType.Redis) {
+      // 对于Redis，我们使用url格式
+      const redisUrl = `redis://${
+        config.username ? `${config.username}:${config.password}@` : ""
+      }${config.host}:${config.port}`;
+      result = await invoke("add_redis_connection", {
+        url: redisUrl,
+        db: config.databaseName ? parseInt(config.databaseName) : undefined,
+      });
+    } else if (config.type === DatabaseType.MySQL) {
+      result = await invoke("add_mysql_connection", {
+        host: config.host,
+        port: config.port,
+        username: config.username,
+        password: config.password || "",
+        database: config.databaseName || "",
+      });
+    } else if (config.type === DatabaseType.PostgreSQL) {
+      // 注意：PostgreSQL在当前后端实现中可能不被支持
+      throw new Error("PostgreSQL is not yet supported in the backend");
+    } else {
+      throw new Error(`Unsupported database type: ${config.type}`);
+    }
+
+    console.log("Database config saved, connection ID:", result);
+
+    // 创建一个新的配置对象，使用后端返回的ID
+    const configWithBackendId = {
+      ...config,
+      id: result as string, // 后端返回的ID
+    };
 
     // 更新本地存储
-    databases.update(prev => {
-      const index = prev.findIndex(db => db.id === config.id);
+    databases.update((prev) => {
+      // 检查是否已有相同后端ID的配置
+      const index = prev.findIndex((db) => db.id === configWithBackendId.id);
       if (index !== -1) {
-        prev[index] = config;
+        prev[index] = configWithBackendId;
       } else {
-        prev.push(config);
+        prev.push(configWithBackendId);
       }
       return [...prev];
     });
   } catch (error) {
-    console.error('Failed to save database config:', error);
+    console.error("Failed to save database config:", error);
     throw error;
   }
 }
@@ -47,26 +85,31 @@ export async function saveDatabaseConfig(config: DatabaseConfig): Promise<void> 
 export async function loadDatabaseConfigs(): Promise<void> {
   try {
     // 通过Tauri调用后端API加载数据库配置
-    const configs = await invoke('get_all_database_configs');
+    const configs = await invoke("get_all_database_configs");
     databases.set(configs as DatabaseConfig[]);
   } catch (error) {
-    console.error('Failed to load database configs:', error);
+    console.error("Failed to load database configs:", error);
     throw error;
   }
 }
 
 // 创建新的流水线任务
-export async function createPipelineTask(task: Omit<PipelineTask, 'id' | 'createdAt' | 'updatedAt' | 'progress' | 'status'>): Promise<PipelineTask> {
+export async function createPipelineTask(
+  task: Omit<
+    PipelineTask,
+    "id" | "createdAt" | "updatedAt" | "progress" | "status"
+  >
+): Promise<PipelineTask> {
   try {
     // 通过Tauri调用后端API创建流水线任务
-    const newTask = await invoke('create_pipeline_task', { task });
+    const newTask = await invoke("create_pipeline_task", { task });
 
     // 更新本地存储
-    pipelineTasks.update(prev => [...prev, newTask as PipelineTask]);
+    pipelineTasks.update((prev) => [...prev, newTask as PipelineTask]);
 
     return newTask as PipelineTask;
   } catch (error) {
-    console.error('Failed to create pipeline task:', error);
+    console.error("Failed to create pipeline task:", error);
     throw error;
   }
 }
@@ -75,9 +118,9 @@ export async function createPipelineTask(task: Omit<PipelineTask, 'id' | 'create
 export async function startPipelineTask(taskId: string): Promise<void> {
   try {
     // 通过Tauri调用后端API启动流水线任务
-    await invoke('start_pipeline_task', { taskId });
+    await invoke("start_pipeline_task", { taskId });
   } catch (error) {
-    console.error('Failed to start pipeline task:', error);
+    console.error("Failed to start pipeline task:", error);
     throw error;
   }
 }
@@ -86,12 +129,12 @@ export async function startPipelineTask(taskId: string): Promise<void> {
 export async function removeDatabaseConfig(id: string): Promise<void> {
   try {
     // 移除数据库连接
-    await invoke('remove_database_connection', { id });
-    
+    await invoke("remove_database_connection", { id });
+
     // 从本地存储中移除
-    databases.update(prev => prev.filter(db => db.id !== id));
+    databases.update((prev) => prev.filter((db) => db.id !== id));
   } catch (error) {
-    console.error('Failed to remove database config:', error);
+    console.error("Failed to remove database config:", error);
     throw error;
   }
 }

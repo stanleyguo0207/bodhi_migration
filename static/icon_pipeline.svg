@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- 背景透明 -->
+  <rect width="1024" height="1024" fill="none"/>
+  <!-- 流程容器 -->
+  <rect x="128" y="128" width="768" height="768" rx="128" ry="128" fill="rgba(245, 158, 11, 0.1)"/>
+  <!-- 流程方块 -->
+  <rect x="192" y="256" width="192" height="192" rx="64" ry="64" fill="rgba(245, 158, 11, 0.7)" stroke="rgba(245, 158, 11, 0.5)" stroke-width="32"/>
+  <rect x="512" y="256" width="192" height="192" rx="64" ry="64" fill="rgba(245, 158, 11, 0.7)" stroke="rgba(245, 158, 11, 0.5)" stroke-width="32"/>
+  <rect x="192" y="512" width="192" height="192" rx="64" ry="64" fill="rgba(245, 158, 11, 0.7)" stroke="rgba(245, 158, 11, 0.5)" stroke-width="32"/>
+  <rect x="512" y="512" width="192" height="192" rx="64" ry="64" fill="rgba(245, 158, 11, 0.7)" stroke="rgba(245, 158, 11, 0.5)" stroke-width="32"/>
+  <!-- 连接箭头 -->
+  <path d="M384 384 L512 384 L512 512 L384 512 Z" fill="rgba(245, 158, 11, 0.7)"/>
+  <path d="M256 512 L256 640 L384 640 L256 640 Z" fill="rgba(245, 158, 11, 0.7)"/>
+  <path d="M640 512 L640 640 L768 640 L640 640 Z" fill="rgba(245, 158, 11, 0.7)"/>
+  <path d="M384 640 L512 640 L512 768 L384 768 Z" fill="rgba(245, 158, 11, 0.7)"/>
+</svg>

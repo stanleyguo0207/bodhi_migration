@@ -1,15 +1,20 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-import {
-  databases,
-  pipelineTasks,
-  appLoading,
-  loadDatabaseConfigs,
-  removeDatabaseConfig
-} from "../stores/appStore";
+  import {
+    databases,
+    pipelineTasks,
+    appLoading,
+    loadDatabaseConfigs,
+    removeDatabaseConfig,
+  } from "../stores/appStore";
   import type { DatabaseConfig, PipelineTask } from "../types/database";
   import { Chart, registerables } from "chart.js";
   import type { ChartConfiguration } from "chart.js";
+  
+  // 数据库类型图标URL
+  const IconMySQL = '/icon_mysql.svg';
+  const IconPostgreSQL = '/icon_postgresql.svg';
+  const IconRedis = '/icon_redis.svg';
 
   // 注册 Chart.js 组件
   Chart.register(...registerables);
@@ -482,31 +487,33 @@ import {
               <div class="database-item">
                 <div class="database-header">
                   <div class={`database-type-icon ${db.type.toLowerCase()}`}>
-                    {#if db.type === 'MySQL'}
-                      <span class="db-icon">🗄️</span>
-                    {:else if db.type === 'PostgreSQL'}
-                      <span class="db-icon">🐘</span>
-                    {:else if db.type === 'MongoDB'}
-                      <span class="db-icon">🍃</span>
-                    {:else if db.type === 'SQLite'}
-                      <span class="db-icon">💾</span>
-                    {:else if db.type === 'Redis'}
-                      <span class="db-icon">🔑</span>
+                    {#if db.type === "mysql"}
+                      <img src={IconMySQL} alt="MySQL" class="db-icon-svg"/>
+                    {:else if db.type === "postgresql"}
+                      <img src={IconPostgreSQL} alt="PostgreSQL" class="db-icon-svg"/>
+                    {:else if db.type === "redis"}
+                      <img src={IconRedis} alt="Redis" class="db-icon-svg"/>
                     {/if}
                   </div>
                   <div class="database-name-status">
                     <h4>{db.name}</h4>
                     <div class="status-indicator">
-                      <span class={`status-dot ${db.name === 'customer_db' ? 'warning' : 'success'}`}></span>
-                      <span class="status-text">{db.name === 'customer_db' ? '连接超时' : '已连接'}</span>
+                      <span
+                        class={`status-dot ${db.name === "customer_db" ? "warning" : "success"}`}
+                      ></span>
+                      <span class="status-text"
+                        >{db.name === "customer_db"
+                          ? "连接超时"
+                          : "已连接"}</span
+                      >
                     </div>
                   </div>
                 </div>
-                
+
                 <div class="database-details">
                   <div class="detail-item">
                     <span class="detail-label">主机:</span>
-                    <span class="detail-value">{db.host || 'localhost'}</span>
+                    <span class="detail-value">{db.host || "localhost"}</span>
                   </div>
                   <div class="detail-item">
                     <span class="detail-label">端口:</span>
@@ -523,10 +530,13 @@ import {
                     </div>
                   {/if}
                 </div>
-                
+
                 <div class="database-actions">
                   <div class="action-buttons-left">
-                    <button class="text-btn test-connection-btn" title="测试连接">
+                    <button
+                      class="text-btn test-connection-btn"
+                      title="测试连接"
+                    >
                       🔌 测试连接
                     </button>
                     <button class="text-btn view-details-btn" title="查看详情">
@@ -534,14 +544,22 @@ import {
                     </button>
                   </div>
                   <div class="action-buttons-right">
-                    <button class="icon-btn edit-btn" on:click={() => onEditDatabase(db.id)} title="编辑">
+                    <button
+                      class="icon-btn edit-btn"
+                      on:click={() => onEditDatabase(db.id)}
+                      title="编辑"
+                    >
                       ⚙️
                     </button>
-                    <button class="icon-btn delete-btn" on:click={async () => {
-                      if (confirm(`确定要删除数据库 ${db.name} 吗？`)) {
-                        await removeDatabaseConfig(db.id);
-                      }
-                    }} title="删除">
+                    <button
+                      class="icon-btn delete-btn"
+                      on:click={async () => {
+                        if (confirm(`确定要删除数据库 ${db.name} 吗？`)) {
+                          await removeDatabaseConfig(db.id);
+                        }
+                      }}
+                      title="删除"
+                    >
                       🗑️
                     </button>
                   </div>
@@ -566,7 +584,7 @@ import {
             >创建流水线</button
           >
         </div>
-        
+
         <!-- 流水线任务列表 -->
         <div class="pipelines-list">
           <!-- MySQL到PostgreSQL的用户数据迁移 -->
@@ -575,7 +593,7 @@ import {
               <h4>MySQL到PostgreSQL用户数据迁移</h4>
               <div class="pipeline-status completed">已完成</div>
             </div>
-            
+
             <div class="pipeline-flow">
               <div class="database-box source">
                 <div class="db-icon mysql">🗄️</div>
@@ -584,12 +602,12 @@ import {
                   <div class="db-details">production_db</div>
                 </div>
               </div>
-              
+
               <div class="arrow">
                 <div class="arrow-line"></div>
                 <div class="arrow-icon">→</div>
               </div>
-              
+
               <div class="database-box target">
                 <div class="db-icon postgres">🐘</div>
                 <div class="db-info">
@@ -598,7 +616,7 @@ import {
                 </div>
               </div>
             </div>
-            
+
             <div class="pipeline-meta">
               <div class="meta-item">
                 <span class="meta-label">上次运行:</span>
@@ -613,7 +631,7 @@ import {
                 <span class="meta-value">15,324</span>
               </div>
             </div>
-            
+
             <div class="pipeline-actions">
               <button class="pipeline-btn view-btn" title="查看详情">
                 👁️ 详情
@@ -626,14 +644,14 @@ import {
               </button>
             </div>
           </div>
-          
+
           <!-- SQL Server到MongoDB的产品数据同步 -->
           <div class="pipeline-card">
             <div class="pipeline-header">
               <h4>SQL Server到MongoDB产品数据同步</h4>
               <div class="pipeline-status running">运行中</div>
             </div>
-            
+
             <div class="pipeline-flow">
               <div class="database-box source">
                 <div class="db-icon sqlserver">🗂️</div>
@@ -642,12 +660,12 @@ import {
                   <div class="db-details">products</div>
                 </div>
               </div>
-              
+
               <div class="arrow">
                 <div class="arrow-line running"></div>
                 <div class="arrow-icon">→</div>
               </div>
-              
+
               <div class="database-box target">
                 <div class="db-icon mongodb">🍃</div>
                 <div class="db-info">
@@ -656,7 +674,7 @@ import {
                 </div>
               </div>
             </div>
-            
+
             <div class="pipeline-meta">
               <div class="meta-item">
                 <span class="meta-label">开始时间:</span>
@@ -674,7 +692,7 @@ import {
                 <span class="progress-text-mini">65%</span>
               </div>
             </div>
-            
+
             <div class="pipeline-actions">
               <button class="pipeline-btn view-btn" title="查看详情">
                 👁️ 详情
@@ -687,14 +705,14 @@ import {
               </button>
             </div>
           </div>
-          
+
           <!-- 多数据库聚合项目 -->
           <div class="pipeline-card">
             <div class="pipeline-header">
               <h4>多数据库聚合项目</h4>
               <div class="pipeline-status failed">失败</div>
             </div>
-            
+
             <div class="pipeline-flow complex">
               <div class="database-box source">
                 <div class="db-icon mysql">🗄️</div>
@@ -703,22 +721,22 @@ import {
                   <div class="db-details">orders</div>
                 </div>
               </div>
-              
+
               <div class="arrow">
                 <div class="arrow-line failed"></div>
                 <div class="arrow-icon">→</div>
               </div>
-              
+
               <div class="etl-box">
                 <div class="etl-icon">🔄</div>
                 <div class="etl-name">ETL处理</div>
               </div>
-              
+
               <div class="arrow">
                 <div class="arrow-line failed"></div>
                 <div class="arrow-icon">→</div>
               </div>
-              
+
               <div class="database-box target">
                 <div class="db-icon redshift">🔴</div>
                 <div class="db-info">
@@ -727,7 +745,7 @@ import {
                 </div>
               </div>
             </div>
-            
+
             <div class="pipeline-meta">
               <div class="meta-item">
                 <span class="meta-label">上次运行:</span>
@@ -742,7 +760,7 @@ import {
                 <span class="error-text">连接超时</span>
               </div>
             </div>
-            
+
             <div class="pipeline-actions">
               <button class="pipeline-btn view-btn" title="查看详情">
                 👁️ 详情
@@ -810,7 +828,10 @@ import {
                     </td>
                     <td>
                       <div class="progress-bar">
-                        <div class="progress-fill" style="width: {task.progress}%"></div>
+                        <div
+                          class="progress-fill"
+                          style="width: {task.progress}%"
+                        ></div>
                         <span class="progress-text">{task.progress}%</span>
                       </div>
                     </td>
@@ -818,12 +839,19 @@ import {
                     <td>{task.estimatedEndTime || "-"}</td>
                     <td>
                       <div class="task-actions">
-                        <button class="action-btn view-btn" on:click={() => onViewTask(task.id)}>查看</button>
+                        <button
+                          class="action-btn view-btn"
+                          on:click={() => onViewTask(task.id)}>查看</button
+                        >
                         {#if task.status === "running"}
                           <button class="action-btn pause-btn">暂停</button>
                         {/if}
                         {#if task.status === "paused" || task.status === "failed"}
-                          <button class="action-btn" style="background-color: var(--apple-success); color: white;">继续</button>
+                          <button
+                            class="action-btn"
+                            style="background-color: var(--apple-success); color: white;"
+                            >继续</button
+                          >
                         {/if}
                         {#if task.status === "running" || task.status === "paused"}
                           <button class="action-btn stop-btn">停止</button>
@@ -1546,27 +1574,33 @@ import {
 
   .database-type-icon.mysql {
     background-color: rgba(255, 149, 0, 0.1);
-    color: #FF9500;
+    color: #ff9500;
   }
 
   .database-type-icon.postgresql {
     background-color: rgba(52, 199, 89, 0.1);
-    color: #34C759;
+    color: #34c759;
   }
 
   .database-type-icon.mongodb {
     background-color: rgba(66, 133, 244, 0.1);
-    color: #4285F4;
+    color: #4285f4;
   }
 
   .database-type-icon.sqlite {
     background-color: rgba(156, 163, 175, 0.1);
-    color: #9CA3AF;
+    color: #9ca3af;
   }
 
   .database-type-icon.redis {
     background-color: rgba(239, 68, 68, 0.1);
-    color: #EF4444;
+    color: #ef4444;
+  }
+  
+  .db-icon-svg {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
   }
 
   .database-name-status {
@@ -1644,17 +1678,17 @@ import {
     padding-top: 12px;
     border-top: 1px solid var(--apple-border-color);
   }
-  
+
   .action-buttons-left {
     display: flex;
     gap: 16px;
   }
-  
+
   .action-buttons-right {
     display: flex;
     gap: 8px;
   }
-  
+
   .text-btn {
     background: none;
     border: none;
@@ -1669,16 +1703,16 @@ import {
     border-radius: 6px;
     transition: all 0.2s ease;
   }
-  
+
   .text-btn:hover {
     background-color: rgba(0, 122, 255, 0.05);
     color: var(--apple-primary);
   }
-  
+
   .test-connection-btn:hover {
     color: var(--apple-success);
   }
-  
+
   .icon-btn {
     width: 28px;
     height: 28px;
@@ -1701,7 +1735,7 @@ import {
   .delete-btn:hover {
     background-color: rgba(255, 59, 48, 0.1);
     border-color: rgba(255, 59, 48, 0.3);
-    color: #FF3B30;
+    color: #ff3b30;
   }
 
   .edit-btn:hover {
@@ -1818,12 +1852,12 @@ import {
 
   .db-icon.mysql {
     background-color: rgba(255, 149, 0, 0.1);
-    color: #FF9500;
+    color: #ff9500;
   }
 
   .db-icon.postgres {
     background-color: rgba(52, 199, 89, 0.1);
-    color: #34C759;
+    color: #34c759;
   }
 
   .db-icon.sqlserver {
@@ -1833,12 +1867,12 @@ import {
 
   .db-icon.mongodb {
     background-color: rgba(66, 133, 244, 0.1);
-    color: #4285F4;
+    color: #4285f4;
   }
 
   .db-icon.redshift {
     background-color: rgba(239, 68, 68, 0.1);
-    color: #EF4444;
+    color: #ef4444;
   }
 
   .db-info {
@@ -1869,12 +1903,16 @@ import {
   .arrow-line {
     width: 60px;
     height: 2px;
-    background-color: #E5E7EB;
+    background-color: #e5e7eb;
     position: relative;
   }
 
   .arrow-line.running {
-    background: linear-gradient(90deg, var(--apple-primary), var(--apple-success));
+    background: linear-gradient(
+      90deg,
+      var(--apple-primary),
+      var(--apple-success)
+    );
     animation: pulse 2s infinite;
   }
 
@@ -1974,14 +2012,18 @@ import {
   .progress-mini {
     width: 60px;
     height: 4px;
-    background-color: #E5E7EB;
+    background-color: #e5e7eb;
     border-radius: 2px;
     overflow: hidden;
   }
 
   .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--apple-primary), var(--apple-success));
+    background: linear-gradient(
+      90deg,
+      var(--apple-primary),
+      var(--apple-success)
+    );
     border-radius: 2px;
   }
 
