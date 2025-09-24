@@ -2,13 +2,13 @@
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use crate::database::connection::DatabaseConnectionManager;
+use crate::database::UnifiedConnectionManager;
 use crate::migration::{MigrationPipeline};
 
 // 应用状态
 pub struct AppState {
-    // 数据库连接管理器
-    pub conn_manager: Arc<RwLock<DatabaseConnectionManager>>,
+    // 统一的数据库连接管理器
+    pub conn_manager: Arc<UnifiedConnectionManager>,
     // 迁移流水线
     pub migration_pipeline: Arc<RwLock<MigrationPipeline>>,
     // SQLite配置数据库的连接ID
@@ -18,7 +18,7 @@ pub struct AppState {
 impl AppState {
     // 创建新的应用状态
     pub fn new() -> Self {
-        let conn_manager = Arc::new(RwLock::new(DatabaseConnectionManager::new()));
+        let conn_manager = Arc::new(UnifiedConnectionManager::new());
         let migration_pipeline = Arc::new(RwLock::new(
             MigrationPipeline::new(conn_manager.clone())
         ));

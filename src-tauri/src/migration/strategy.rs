@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use serde::{Serialize, Deserialize};
-use crate::database::connection::DatabaseConnectionManager;
+use crate::database::UnifiedConnectionManager;
 
 // 迁移策略特性
 #[async_trait::async_trait]
@@ -16,7 +16,7 @@ pub trait MigrationStrategy: Send + Sync {
         &self,
         source_db_id: &str,
         target_db_id: &str,
-        conn_manager: Arc<RwLock<DatabaseConnectionManager>>,
+        conn_manager: Arc<UnifiedConnectionManager>,
     ) -> Result<(), String>;
 }
 
@@ -44,14 +44,13 @@ impl MigrationStrategy for FullMigrationStrategy {
         &self,
         source_db_id: &str,
         target_db_id: &str,
-        conn_manager: Arc<RwLock<DatabaseConnectionManager>>,
+        conn_manager: Arc<UnifiedConnectionManager>,
     ) -> Result<(), String> {
         // 这里实现全量迁移的逻辑
         // 1. 从源数据库读取所有数据
         // 2. 写入目标数据库
         
         // 示例实现，实际需要根据不同数据库类型进行处理
-        let conn_manager = conn_manager.read().await;
         let source_conn = conn_manager.get_connection(source_db_id).await
             .ok_or_else(|| format!("Source database connection not found: {}", source_db_id))?;
         let target_conn = conn_manager.get_connection(target_db_id).await
@@ -92,7 +91,7 @@ impl MigrationStrategy for IncrementalMigrationStrategy {
         &self,
         source_db_id: &str,
         target_db_id: &str,
-        conn_manager: Arc<RwLock<DatabaseConnectionManager>>,
+        conn_manager: Arc<UnifiedConnectionManager>,
     ) -> Result<(), String> {
         // 这里实现增量迁移的逻辑
         // 1. 根据last_migration_id确定增量数据的范围
@@ -100,7 +99,6 @@ impl MigrationStrategy for IncrementalMigrationStrategy {
         // 3. 写入目标数据库
         
         // 示例实现，实际需要根据不同数据库类型进行处理
-        let conn_manager = conn_manager.read().await;
         let source_conn = conn_manager.get_connection(source_db_id).await
             .ok_or_else(|| format!("Source database connection not found: {}", source_db_id))?;
         let target_conn = conn_manager.get_connection(target_db_id).await
@@ -143,7 +141,7 @@ impl MigrationStrategy for CustomSQLMigrationStrategy {
         &self,
         source_db_id: &str,
         target_db_id: &str,
-        conn_manager: Arc<RwLock<DatabaseConnectionManager>>,
+        conn_manager: Arc<UnifiedConnectionManager>,
     ) -> Result<(), String> {
         // 这里实现自定义SQL迁移的逻辑
         // 1. 执行自定义SQL查询源数据库
@@ -151,7 +149,6 @@ impl MigrationStrategy for CustomSQLMigrationStrategy {
         // 3. 执行生成的SQL写入目标数据库
         
         // 示例实现，实际需要根据不同数据库类型进行处理
-        let conn_manager = conn_manager.read().await;
         let source_conn = conn_manager.get_connection(source_db_id).await
             .ok_or_else(|| format!("Source database connection not found: {}", source_db_id))?;
         let target_conn = conn_manager.get_connection(target_db_id).await
@@ -189,7 +186,7 @@ impl MigrationStrategyEnum {
         &self,
         source_db_id: &str,
         target_db_id: &str,
-        conn_manager: Arc<RwLock<DatabaseConnectionManager>>,
+        conn_manager: Arc<UnifiedConnectionManager>,
     ) -> Result<(), String> {
         match self {
             MigrationStrategyEnum::Full(strategy) => {

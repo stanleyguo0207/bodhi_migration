@@ -61,17 +61,40 @@
 
   // 初始化应用
   onMount(async () => {
-    try {
-      // 调用后端的init_app函数初始化SQLite配置数据库
-      await invoke("init_app");
-      // 初始化成功后加载数据库配置
-      await loadDatabaseConfigs();
-    } catch (error) {
-      console.error("Failed to initialize application:", error);
-    } finally {
-      // 设置加载状态为false
-      appLoading.set(false);
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        console.log(`尝试初始化应用 (第 ${retryCount + 1} 次)...`);
+        
+        // 调用后端的init_app函数初始化SQLite配置数据库
+        await invoke("init_app");
+        console.log("应用初始化成功");
+        
+        // 初始化成功后加载数据库配置
+        await loadDatabaseConfigs();
+        console.log("数据库配置加载成功");
+        
+        // 成功后跳出循环
+        break;
+      } catch (error) {
+        retryCount++;
+        console.error(`第 ${retryCount} 次初始化失败:`, error);
+        
+        if (retryCount >= maxRetries) {
+          console.error("应用初始化失败，已达到最大重试次数");
+          // 可以在这里添加用户友好的错误提示
+          alert("应用初始化失败，请检查应用权限或重新启动应用");
+        } else {
+          // 等待一段时间后重试
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+      }
     }
+    
+    // 设置加载状态为false
+    appLoading.set(false);
   });
 </script>
 

@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use crate::database::connection::DatabaseConnectionManager;
+use crate::database::UnifiedConnectionManager;
 use crate::migration::MigrationTask;
 use crate::migration::task::TaskStatus;
 use crate::migration::task::TaskProgress;
@@ -11,12 +11,12 @@ use crate::migration::task::TaskProgress;
 // 迁移流水线
 pub struct MigrationPipeline {
     tasks: Arc<RwLock<HashMap<String, MigrationTask>>>,
-    conn_manager: Arc<RwLock<DatabaseConnectionManager>>,
+    conn_manager: Arc<UnifiedConnectionManager>,
 }
 
 impl MigrationPipeline {
     // 创建新的迁移流水线
-    pub fn new(conn_manager: Arc<RwLock<DatabaseConnectionManager>>) -> Self {
+    pub fn new(conn_manager: Arc<UnifiedConnectionManager>) -> Self {
         Self {
             tasks: Arc::new(RwLock::new(HashMap::new())),
             conn_manager,

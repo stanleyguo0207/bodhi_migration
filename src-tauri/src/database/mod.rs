@@ -1,10 +1,12 @@
 // 数据库模块的入口文件
 
-// 导出数据库连接管理
-pub mod connection;
-// 导出SQLite数据库实现
-pub mod sqlite;
-// 导出MySQL数据库实现
-pub mod mysql;
-// 导出Redis数据库实现
-pub mod redis;
+// 数据库模块
+
+pub mod sqlx_db;
+pub mod redis_manager;
+pub mod connection_manager;
+
+// 重新导出主要类型
+pub use sqlx_db::{DatabaseConfig, DatabaseType, SqlxDatabaseConnection, DatabaseManager};
+pub use redis_manager::{RedisConfig, RedisConnectionManager, RedisManager};
+pub use connection_manager::{UnifiedConnection, UnifiedConnectionManager};

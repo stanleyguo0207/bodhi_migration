@@ -39,12 +39,33 @@ export async function saveDatabaseConfig(
       // 新建配置：创建新的数据库连接
       if (config.type === DatabaseType.Redis) {
         // 对于Redis，我们使用url格式
-        const redisUrl = `redis://${
-          config.username ? `${config.username}:${config.password}@` : ""
-        }${config.host}:${config.port}`;
+        let redisUrl: string;
+        
+        // 验证主机地址，确保不包含非法字符
+        const host = config.host || 'localhost';
+        const port = config.port || 6379;
+        
+        // 验证主机名是否包含非法字符
+        if (host.includes(' ') || host.includes('\t') || host.includes('\n')) {
+          throw new Error(`Invalid Redis host: contains whitespace characters`);
+        }
+        
+        // 构建Redis URL，确保主机地址有效
+        if (config.username && config.password) {
+          // URL编码用户名和密码，避免特殊字符问题
+          const encodedUsername = encodeURIComponent(config.username);
+          const encodedPassword = encodeURIComponent(config.password);
+          redisUrl = `redis://${encodedUsername}:${encodedPassword}@${host}:${port}`;
+        } else {
+          redisUrl = `redis://${host}:${port}`;
+        }
+        
+        console.log("构建的Redis URL:", redisUrl.replace(/:[^:@]+@/, ':****@')); // 日志中隐藏密码
+        console.log("原始配置:", { host: config.host, port: config.port, username: config.username, database: config.database });
+        
         connectionId = await invoke("add_redis_connection", {
           url: redisUrl,
-          db: config.database ? parseInt(config.database) : undefined,
+          db: config.database ? parseInt(config.database) : 0,
         });
       } else if (config.type === DatabaseType.MySQL) {
         connectionId = await invoke("add_mysql_connection", {

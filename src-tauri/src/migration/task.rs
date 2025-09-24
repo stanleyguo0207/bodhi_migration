@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 use tokio::time::Instant;
 use uuid::Uuid;
 use serde_with::{serde_as, TimestampMilliSeconds};
-use crate::database::connection::DatabaseConnectionManager;
+use crate::database::UnifiedConnectionManager;
 use crate::migration::{MigrationStrategyEnum};
 
 // 任务状态枚举
@@ -153,7 +153,7 @@ impl MigrationTask {
     }
     
     // 开始任务
-    pub async fn start(&mut self, _: Arc<RwLock<DatabaseConnectionManager>>) -> Result<(), String> {
+    pub async fn start(&mut self, _: Arc<UnifiedConnectionManager>) -> Result<(), String> {
         if self.status != TaskStatus::Created && self.status != TaskStatus::Paused && self.status != TaskStatus::Failed {
             return Err(format!("Cannot start task in {} status", self.status_to_string()));
         }

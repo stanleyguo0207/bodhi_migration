@@ -119,6 +119,10 @@
 
     if (!formData.host?.trim()) {
       errors.host = "主机地址不能为空";
+    } else if (/\s/.test(formData.host.trim())) {
+      errors.host = "主机地址不能包含空格或制表符";
+    } else if (!/^[a-zA-Z0-9.-]+$/.test(formData.host.trim())) {
+      errors.host = "主机地址只能包含字母、数字、点和连字符";
     }
 
     if (!formData.port) {
@@ -219,14 +223,21 @@
     connectionTestMessage = "";
 
     try {
-      // 模拟连接测试
-      // 实际项目中应该调用API测试连接
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // 构建测试连接的配置对象
+      const testConfig = {
+        type: formData.type,
+        host: formData.host,
+        port: formData.port,
+        username: formData.username,
+        password: formData.password,
+        database: formData.database,
+        ssl: formData.ssl
+      };
 
-      // 模拟连接结果（80%的概率成功）
-      const isSuccess = Math.random() > 0.2;
-
-      if (isSuccess) {
+      // 调用后端API测试连接
+      const result = await invoke("test_database_connection", { config: testConfig });
+      
+      if (result) {
         connectionTestResult = "success";
         connectionTestMessage = "连接成功！";
       } else {
