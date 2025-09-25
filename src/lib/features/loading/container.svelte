@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { loadingManager, type LoadingConfig } from './utils/loading.utils';
-  import LoadingAnimation from './animation.svelte';
-  import ModernLoadingAnimation from './modern-loading-animation.svelte';
+  import LoadingAnimation from './Animation.svelte';
+  import ModernLoadingAnimation from './ModernLoadingAnimation.svelte';
   
   export let config: Partial<LoadingConfig> = {};
   export let type: 'basic' | 'modern' = 'modern';

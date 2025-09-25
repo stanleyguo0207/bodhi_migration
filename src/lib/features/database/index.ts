@@ -1,5 +1,5 @@
 // Database feature exports
-export { default as DatabaseConfigForm } from './database.svelte';
+export { default as DatabaseConfigForm } from './Database.svelte';
 
 // Database types
 export type { DatabaseFormData, ValidationError } from './types/database.types';

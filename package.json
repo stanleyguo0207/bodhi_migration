@@ -1,7 +1,7 @@
 {
   "name": "bodhi_migration",
   "version": "0.1.0",
-  "description": "",
+  "description": "A database migration and management tool",
   "author": "stanleyguo0207",
   "email": "stanleyguo0207@163.com",
   "type": "module",
