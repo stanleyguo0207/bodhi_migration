@@ -16,6 +16,7 @@ export interface DatabaseConfig {
   password?: string;
   database?: string;
   ssl?: boolean;
+  cluster?: boolean;
   extra?: Record<string, string>;
   createdAt: string;
   updatedAt: string;

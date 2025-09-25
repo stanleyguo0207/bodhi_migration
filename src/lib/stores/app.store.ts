@@ -135,6 +135,30 @@ export async function loadDatabaseConfigs(): Promise<void> {
   }
 }
 
+// 从store中获取特定ID的数据库配置
+export async function getDatabaseConfigById(id: string): Promise<DatabaseConfig | undefined> {
+  let config: DatabaseConfig | undefined;
+  
+  // 检查store中是否已有数据
+  databases.subscribe((currentDatabases) => {
+    if (currentDatabases.length > 0) {
+      config = currentDatabases.find((db) => db.id === id);
+    }
+  })();
+  
+  // 如果store中没有数据或找不到指定ID的配置，则加载所有配置
+  if (!config) {
+    await loadDatabaseConfigs();
+    
+    // 再次尝试从store中查找
+    databases.subscribe((currentDatabases) => {
+      config = currentDatabases.find((db) => db.id === id);
+    })();
+  }
+  
+  return config;
+}
+
 // 创建新的流水线任务
 export async function createPipelineTask(
   task: Omit<

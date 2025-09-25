@@ -50,6 +50,7 @@ pub struct DatabaseConfig {
     pub password: Option<String>,
     pub database: Option<String>,
     pub ssl: bool,
+    pub cluster: Option<bool>,
     pub extra: Option<String>,
     pub created_at: String,
     pub updated_at: String,

@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { type DatabaseConfig, DatabaseType } from "$lib/types/database.types";
-  import { saveDatabaseConfig } from "$lib/stores/app.store";
+  import { saveDatabaseConfig, getDatabaseConfigById } from "$lib/stores/app.store";
 
   // Props
   export let databaseId: string | null = null;
@@ -20,6 +20,7 @@
     password: "",
     database: "",
     ssl: false,
+    cluster: false,
     extra: {} as Record<string, string>,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -48,10 +49,8 @@
   onMount(async () => {
     if (databaseId) {
       try {
-        // 通过Tauri调用后端API获取所有数据库配置，然后本地过滤
-        const allConfigs = await invoke("get_all_database_configs_from_db");
-        const configs = allConfigs as DatabaseConfig[];
-        const config = configs.find((c: DatabaseConfig) => c.id === databaseId);
+        // 使用store中的getDatabaseConfigById函数获取配置，避免重复加载
+        const config = await getDatabaseConfigById(databaseId);
         
         if (config) {
           formData = { ...config };
@@ -231,7 +230,8 @@
         username: formData.username,
         password: formData.password,
         database: formData.database,
-        ssl: formData.ssl
+        ssl: formData.ssl,
+        cluster: formData.cluster
       };
 
       // 调用后端API测试连接
@@ -432,6 +432,11 @@
       <div class="checkbox-group">
         <input type="checkbox" id="ssl" bind:checked={formData.ssl} />
         <label for="ssl">启用SSL连接</label>
+      </div>
+      
+      <div class="checkbox-group">
+        <input type="checkbox" id="cluster" bind:checked={formData.cluster} />
+        <label for="cluster">集群模式</label>
       </div>
 
       {#if formData.ssl}

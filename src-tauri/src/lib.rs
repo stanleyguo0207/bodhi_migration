@@ -69,6 +69,7 @@ async fn init_app(state: State<'_, Arc<RwLock<AppState>>>) -> Result<InitResult,
         password: None,
         database: Some(db_path.clone()),
         ssl: false,
+        cluster: None,
         extra: None,
         created_at: Utc::now().to_rfc3339(),
         updated_at: Utc::now().to_rfc3339(),
@@ -144,6 +145,7 @@ async fn save_database_config_to_db(
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
     let ssl = config.get("ssl").and_then(|v| v.as_bool()).unwrap_or(false);
+    let cluster = config.get("cluster").and_then(|v| v.as_bool()).unwrap_or(false);
     let extra = config
         .get("extra")
         .and_then(|v| v.as_str())
@@ -175,6 +177,7 @@ async fn save_database_config_to_db(
             password TEXT,
             database TEXT,
             ssl BOOLEAN DEFAULT FALSE,
+            cluster BOOLEAN DEFAULT FALSE,
             extra TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
@@ -186,14 +189,19 @@ async fn save_database_config_to_db(
     // 插入或更新配置
     let insert_sql = r#"
         INSERT OR REPLACE INTO database_configs 
-        (id, name, type, host, port, username, password, database, ssl, extra, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, name, type, host, port, username, password, database, ssl, cluster, extra, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     "#;
 
     let port_str = port
         .map(|p| p.to_string())
         .unwrap_or_else(|| "".to_string());
     let ssl_str = if ssl {
+        "true".to_string()
+    } else {
+        "false".to_string()
+    };
+    let cluster_str = if cluster {
         "true".to_string()
     } else {
         "false".to_string()
@@ -209,6 +217,7 @@ async fn save_database_config_to_db(
         password.as_deref().unwrap_or(""),
         database.as_deref().unwrap_or(""),
         ssl_str.as_str(),
+        cluster_str.as_str(),
         extra.as_deref().unwrap_or(""),
         created_at,
         updated_at,
@@ -257,12 +266,18 @@ async fn get_all_database_configs_from_db(
     
     // 首先检查表是否存在
     let check_table_sql = "SELECT name FROM sqlite_master WHERE type='table' AND name='database_configs'";
-    let table_exists = connection.execute(check_table_sql).await? > 0;
+    let table_exists = match connection.fetch_all_sqlite(check_table_sql).await {
+        Ok(rows) => !rows.is_empty(),
+        Err(e) => {
+            println!("检查表是否存在失败: {}", e);
+            false
+        }
+    };
     
     if table_exists {
         // 查询所有配置 - 使用SQLite专用查询方法
         let select_sql = r#"
-            SELECT id, name, type, host, port, username, password, database, ssl, extra, created_at, updated_at
+            SELECT id, name, type, host, port, username, password, database, ssl, cluster, extra, created_at, updated_at
             FROM database_configs
             ORDER BY created_at DESC
         "#;
@@ -282,6 +297,7 @@ async fn get_all_database_configs_from_db(
                         "password": row.try_get::<Option<String>, _>("password").ok().flatten(),
                         "database": row.try_get::<Option<String>, _>("database").ok().flatten(),
                         "ssl": row.try_get::<bool, _>("ssl").unwrap_or(false),
+                        "cluster": row.try_get::<bool, _>("cluster").unwrap_or(false),
                         "extra": row.try_get::<Option<String>, _>("extra").ok().flatten(),
                         "createdAt": row.try_get::<String, _>("created_at").unwrap_or_default(),
                         "updatedAt": row.try_get::<String, _>("updated_at").unwrap_or_default(),
@@ -351,6 +367,7 @@ async fn add_sqlite_connection(
         password: None,
         database: Some(db_path),
         ssl: false,
+        cluster: None,
         extra: None,
         created_at: Utc::now().to_rfc3339(),
         updated_at: Utc::now().to_rfc3339(),
@@ -384,6 +401,7 @@ async fn add_mysql_connection(
         password: Some(password),
         database: Some(database),
         ssl: false,
+        cluster: None,
         extra: None,
         created_at: Utc::now().to_rfc3339(),
         updated_at: Utc::now().to_rfc3339(),
@@ -422,6 +440,7 @@ async fn add_redis_connection(
         password: None,
         database: db.map(|d| d.to_string()),
         ssl: false,
+        cluster: None,
         extra: None,
         created_at: Utc::now().to_rfc3339(),
         updated_at: Utc::now().to_rfc3339(),

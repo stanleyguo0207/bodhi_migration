@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import { invoke } from "@tauri-apps/api/core";
   import {
     databases,
     pipelineTasks,
@@ -77,6 +78,56 @@
         fill: true,
       },
     ],
+  };
+
+  // 测试数据库连接
+  const testDatabaseConnection = async (dbId: string, dbName: string) => {
+    // 保存原始按钮引用，避免多次查询DOM
+    const button = document.querySelector<HTMLButtonElement>(`[data-db-id="${dbId}"]`);
+    if (!button) return;
+    
+    // 创建临时容器来保存原始按钮，并替换为加载状态按钮
+    const tempContainer = document.createElement('div');
+    tempContainer.style.display = 'inline-block';
+    tempContainer.style.position = 'relative';
+    button.parentNode?.insertBefore(tempContainer, button);
+    button.parentNode?.removeChild(button);
+    
+    try {
+      // 创建加载状态按钮，确保样式与正常状态保持一致
+      const loadingButton = document.createElement('button');
+      // 完全复制原始按钮的类名和相关样式
+      loadingButton.className = button.className;
+      loadingButton.disabled = true;
+      loadingButton.style.pointerEvents = 'none';
+      loadingButton.style.minWidth = '100px';
+      // 确保边框样式与正常按钮一致，解决禁用状态下的边框问题
+      loadingButton.style.border = '1px solid var(--apple-border-color)';
+      loadingButton.style.borderRadius = '6px';
+      loadingButton.style.background = 'var(--apple-card-bg)';
+      // 应用与正常状态相同的图标样式，但使用加载中动画
+      loadingButton.innerHTML = '<img src="/icon_socket.svg" alt="连接中" class="icon" style="width: 16px; height: 16px; filter: invert(0.7) sepia(1) saturate(4) hue-rotate(80deg); background: rgba(52, 199, 89, 0.1); box-shadow: 0 2px 4px rgba(52, 199, 89, 0.2); animation: pulse-glow 1s ease-in-out infinite alternate; padding: 2px; border-radius: 4px;" /> 测试中...';
+      
+      tempContainer.appendChild(loadingButton);
+
+      // 调用后端API测试连接
+      const result = await invoke("test_database_connection", { id: dbId });
+      
+      // 显示测试结果
+      if (result) {
+        alert(`数据库 "${dbName}" 连接测试成功！`);
+      } else {
+        alert(`数据库 "${dbName}" 连接测试失败，请检查配置。`);
+      }
+    } catch (error) {
+      console.error("Connection test failed:", error);
+      alert(`数据库 "${dbName}" 连接测试失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      // 完全恢复原始按钮
+      tempContainer.parentNode?.insertBefore(button, tempContainer);
+      tempContainer.parentNode?.removeChild(tempContainer);
+      button.disabled = false;
+    }
   };
 
   // 如果有数据库和任务数据，初始化图表数据
@@ -292,6 +343,12 @@
         label: "SSL",
         value: db.ssl ? "🔒 启用" : "🔓 禁用",
         icon: getIcon("ssl"),
+        color: getDbColor(db.type),
+      },
+      {
+        label: "集群模式",
+        value: db.cluster ? "🚀 启用" : "⚡ 禁用",
+        icon: "📊",
         color: getDbColor(db.type),
       },
     ];
@@ -920,6 +977,17 @@
                       <span class="detail-value">{db.database}</span>
                     </div>
                   {/if}
+                  {#if db.cluster}
+                    <div class="detail-item">
+                      <span class="detail-label">模式:</span>
+                      <span class="detail-value cluster-mode">集群</span>
+                    </div>
+                  {:else}
+                    <div class="detail-item">
+                      <span class="detail-label">模式:</span>
+                      <span class="detail-value cluster-mode">单点</span>
+                    </div>
+                  {/if}
                 </div>
 
                 <div class="database-actions">
@@ -927,6 +995,8 @@
                     <button
                       class="text-btn test-connection-btn"
                       title="测试连接"
+                      on:click={() => testDatabaseConnection(db.id, db.name)}
+                      data-db-id={db.id}
                     >
                       <img src="/icon_socket.svg" alt="连接" class="icon" /> 测试连接
                     </button>
@@ -1946,6 +2016,11 @@
   /* Database Config Styles */
   .database-config-section .section-header {
     margin-bottom: 20px;
+  }
+  
+  .detail-value.cluster-mode {
+    color: var(--apple-primary);
+    font-weight: 600;
   }
 
   .databases-list {
