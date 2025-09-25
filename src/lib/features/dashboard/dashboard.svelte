@@ -86,47 +86,508 @@
     const button = document.querySelector<HTMLButtonElement>(`[data-db-id="${dbId}"]`);
     if (!button) return;
     
-    // 创建临时容器来保存原始按钮，并替换为加载状态按钮
-    const tempContainer = document.createElement('div');
-    tempContainer.style.display = 'inline-block';
-    tempContainer.style.position = 'relative';
-    button.parentNode?.insertBefore(tempContainer, button);
-    button.parentNode?.removeChild(button);
+    // 保存原始按钮的内容和状态，用于后续恢复
+    const originalContent = button.innerHTML;
+    const originalDisabled = button.disabled;
+    const originalPointerEvents = button.style.pointerEvents;
+    const originalMinWidth = button.style.minWidth;
+    const originalBorder = button.style.border;
+    const originalBorderRadius = button.style.borderRadius;
+    const originalBackground = button.style.background;
+    
+    // 获取数据库配置
+    const dbConfig = displayDatabases.find(db => db.id === dbId);
     
     try {
-      // 创建加载状态按钮，确保样式与正常状态保持一致
-      const loadingButton = document.createElement('button');
-      // 完全复制原始按钮的类名和相关样式
-      loadingButton.className = button.className;
-      loadingButton.disabled = true;
-      loadingButton.style.pointerEvents = 'none';
-      loadingButton.style.minWidth = '100px';
+      // 直接修改原始按钮为加载状态，避免DOM结构变化
+      button.disabled = true;
+      button.style.pointerEvents = 'none';
+      button.style.minWidth = '100px';
       // 确保边框样式与正常按钮一致，解决禁用状态下的边框问题
-      loadingButton.style.border = '1px solid var(--apple-border-color)';
-      loadingButton.style.borderRadius = '6px';
-      loadingButton.style.background = 'var(--apple-card-bg)';
+      button.style.border = '1px solid var(--apple-border-color)';
+      button.style.borderRadius = '6px';
+      button.style.background = 'var(--apple-card-bg)';
       // 应用与正常状态相同的图标样式，但使用加载中动画
-      loadingButton.innerHTML = '<img src="/icon_socket.svg" alt="连接中" class="icon" style="width: 16px; height: 16px; filter: invert(0.7) sepia(1) saturate(4) hue-rotate(80deg); background: rgba(52, 199, 89, 0.1); box-shadow: 0 2px 4px rgba(52, 199, 89, 0.2); animation: pulse-glow 1s ease-in-out infinite alternate; padding: 2px; border-radius: 4px;" /> 测试中...';
+      button.innerHTML = '<img src="/icon_socket.svg" alt="连接中" class="icon" style="width: 16px; height: 16px; filter: invert(0.7) sepia(1) saturate(4) hue-rotate(80deg); background: rgba(52, 199, 89, 0.1); box-shadow: 0 2px 4px rgba(52, 199, 89, 0.2); animation: pulse-glow 1s ease-in-out infinite alternate; padding: 2px; border-radius: 4px;" /> 测试中...';
+
+      // 创建连接详情模态框
+      const modal = document.createElement('div');
+      modal.className = 'database-detail-modal';
       
-      tempContainer.appendChild(loadingButton);
+      // 获取数据库类型图标路径
+      const getDbIconPath = (type: string) => {
+        switch (type) {
+          case 'mysql':
+            return '/icon_mysql.svg';
+          case 'postgresql':
+            return '/icon_postgresql.svg';
+          case 'redis':
+            return '/icon_redis.svg';
+          default:
+            return '/icon_db.svg';
+        }
+      };
+
+      // 获取数据库类型颜色
+      const getDbColor = (type: string) => {
+        switch (type) {
+          case 'mysql':
+            return '#4CAF50';
+          case 'postgresql':
+            return '#3F51B5';
+          case 'redis':
+            return '#F44336';
+          default:
+            return '#9E9E9E';
+        }
+      };
+
+      // 初始化模态框内容为连接中状态
+      modal.innerHTML = `
+        <div class="modal-overlay" onclick="this.parentElement.remove()"></div>
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="header-content">
+              <div class="db-icon-large" style="background-color: ${dbConfig ? getDbColor(dbConfig.type) + '20' : '#9E9E9E20'}; color: ${dbConfig ? getDbColor(dbConfig.type) : '#9E9E9E'}">
+                <img src="${dbConfig ? getDbIconPath(dbConfig.type) : '/icon_socket.svg'}" alt="连接测试" style="width: 32px; height: 32px; object-fit: contain;">
+              </div>
+              <div class="header-text">
+                <h3>连接测试 - ${dbName}</h3>
+                <p class="db-type-subtitle">正在测试连接...</p>
+              </div>
+            </div>
+            <button class="modal-close" onclick="this.closest('.database-detail-modal').remove()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="detail-section">
+              <h4 class="section-title">连接信息</h4>
+              <div class="detail-grid">
+                ${dbConfig ? `
+                  <div class="detail-item">
+                    <div class="detail-label">主机</div>
+                    <div class="detail-value">${dbConfig.host || 'localhost'}</div>
+                  </div>
+                  <div class="detail-item">
+                    <div class="detail-label">端口</div>
+                    <div class="detail-value">${dbConfig.port}</div>
+                  </div>
+                  <div class="detail-item">
+                    <div class="detail-label">用户名</div>
+                    <div class="detail-value">${dbConfig.username}</div>
+                  </div>
+                  ${dbConfig.database ? `
+                  <div class="detail-item">
+                    <div class="detail-label">数据库</div>
+                    <div class="detail-value">${dbConfig.database}</div>
+                  </div>
+                  ` : ''}
+                  <div class="detail-item">
+                    <div class="detail-label">SSL</div>
+                    <div class="detail-value">${dbConfig.ssl ? '🔒 启用' : '🔓 禁用'}</div>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+            <div class="detail-section">
+              <h4 class="section-title">连接过程</h4>
+              <div class="connection-log" style="background: #f5f5f7; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 13px; color: #333; max-height: 200px; overflow-y: auto;">
+                <div class="log-item connecting">正在连接到数据库...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // 添加样式
+      const style = document.createElement('style');
+      style.textContent = `
+        .database-detail-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        .modal-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(4px);
+        }
+        
+        .modal-content {
+          position: relative;
+          background: white;
+          border-radius: 14px;
+          box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05);
+          width: 90%;
+          max-width: 600px;
+          max-height: 80vh;
+          display: flex;
+          flex-direction: column;
+          animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        @keyframes modalSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 24px 32px;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .header-content {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+        
+        .db-icon-large {
+          width: 56px;
+          height: 56px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .header-text h3 {
+          margin: 0 0 4px 0;
+          font-size: 24px;
+          font-weight: 700;
+          color: #000;
+          letter-spacing: -0.5px;
+        }
+        
+        .db-type-subtitle {
+          margin: 0;
+          font-size: 14px;
+          color: #8e8e93;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        
+        .modal-close {
+          background: rgba(0, 0, 0, 0.05);
+          border: none;
+          font-size: 24px;
+          color: #8e8e93;
+          cursor: pointer;
+          padding: 0;
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          flex-shrink: 0;
+        }
+        
+        .modal-close:hover {
+          background: rgba(0, 0, 0, 0.1);
+          color: #000;
+          transform: scale(1.05);
+        }
+        
+        .modal-body {
+          padding: 32px;
+          overflow-y: auto;
+          max-height: calc(80vh - 140px);
+        }
+        
+        .detail-section {
+          margin-bottom: 32px;
+        }
+        
+        .detail-section:last-child {
+          margin-bottom: 0;
+        }
+        
+        .section-title {
+          margin: 0 0 20px 0;
+          font-size: 16px;
+          font-weight: 600;
+          color: #000;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .detail-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        
+        .detail-item {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        
+        .detail-label {
+          font-size: 13px;
+          color: #8e8e93;
+          font-weight: 500;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+        }
+        
+        .detail-value {
+          font-size: 15px;
+          color: #1c1c1e;
+          font-weight: 500;
+        }
+        
+        .connection-log {
+          background: #f5f5f7 !important;
+          border-radius: 8px !important;
+          padding: 16px !important;
+          font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace !important;
+          font-size: 13px !important;
+          color: #333 !important;
+          max-height: 200px !important;
+          overflow-y: auto !important;
+        }
+        
+        .log-item {
+          padding: 4px 0;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .log-item:before {
+          content: '>';
+          color: #8e8e93;
+          margin-right: 8px;
+        }
+        
+        .log-item.connecting {
+          color: #007aff;
+        }
+        
+        .log-item.authenticating {
+          color: #5856d6;
+        }
+        
+        .log-item.success {
+          color: #34c759;
+        }
+        
+        .log-item.error {
+          color: #ff3b30;
+        }
+        
+        .result-success {
+          color: #34c759 !important;
+        }
+        
+        .result-error {
+          color: #ff3b30 !important;
+        }
+        
+        .connection-result {
+          padding: 12px 16px;
+          border-radius: 8px;
+          margin-top: 16px;
+          font-weight: 500;
+        }
+        
+        .connection-result.success {
+          background-color: rgba(52, 199, 89, 0.1);
+          color: #34c759;
+        }
+        
+        .connection-result.error {
+          background-color: rgba(255, 59, 48, 0.1);
+          color: #ff3b30;
+        }
+        
+        @media (max-width: 640px) {
+          .modal-content {
+            width: 95%;
+            margin: 20px;
+          }
+          
+          .modal-header {
+            padding: 20px 24px;
+          }
+          
+          .modal-body {
+            padding: 24px;
+          }
+          
+          .detail-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .header-text h3 {
+            font-size: 20px;
+          }
+        }
+      `;
+
+      // 添加到页面
+      document.head.appendChild(style);
+      document.body.appendChild(modal);
+      
+      // 添加关闭模态框的统一处理函数
+      const closeModal = async () => {
+        // 重新加载数据库配置，确保UI与最新数据保持同步
+        await loadDatabaseConfigs();
+        
+        // 移除模态框和样式
+        modal.remove();
+        style.remove();
+        
+        // 移除键盘事件监听
+        document.removeEventListener('keydown', handleEscape);
+      };
+      
+      // 修改关闭按钮的点击事件
+      const closeButton = modal.querySelector('.modal-close');
+      if (closeButton) {
+        closeButton.onclick = closeModal;
+      }
+      
+      // 修改遮罩层的点击事件
+      const overlay = modal.querySelector('.modal-overlay');
+      if (overlay) {
+        overlay.onclick = closeModal;
+      }
+      
+      // 添加键盘事件监听，支持按Escape键关闭模态框
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          closeModal();
+        }
+      };
+      document.addEventListener('keydown', handleEscape);
+
+      // 获取连接日志元素
+      const logContainer = modal.querySelector('.connection-log') as HTMLElement;
+      
+      // 模拟连接过程的日志更新
+      setTimeout(() => {
+        const logItem = document.createElement('div');
+        logItem.className = 'log-item authenticating';
+        logItem.textContent = '正在验证身份...';
+        logContainer.appendChild(logItem);
+        logContainer.scrollTop = logContainer.scrollHeight;
+      }, 800);
 
       // 调用后端API测试连接
       const result = await invoke("test_database_connection", { id: dbId });
       
-      // 显示测试结果
+      // 更新日志和模态框状态
+      const logItem = document.createElement('div');
       if (result) {
-        alert(`数据库 "${dbName}" 连接测试成功！`);
+        logItem.className = 'log-item success';
+        logItem.textContent = '连接成功！';
+        
+        // 更新模态框标题和状态
+        const headerText = modal.querySelector('.header-text h3') as HTMLElement;
+        const subtitle = modal.querySelector('.db-type-subtitle') as HTMLElement;
+        headerText.textContent = `连接测试成功 - ${dbName}`;
+        subtitle.textContent = '连接状态：成功';
+        subtitle.className = 'db-type-subtitle result-success';
+        
+        // 添加成功消息
+        const resultMessage = document.createElement('div');
+        resultMessage.className = 'connection-result success';
+        resultMessage.textContent = `数据库 "${dbName}" 连接测试成功！`;
+        logContainer.parentNode?.appendChild(resultMessage);
+        
+        // 重新加载数据库配置，确保UI与最新数据保持同步
+        await loadDatabaseConfigs();
       } else {
-        alert(`数据库 "${dbName}" 连接测试失败，请检查配置。`);
+        logItem.className = 'log-item error';
+        logItem.textContent = '连接失败！';
+        
+        // 更新模态框标题和状态
+        const headerText = modal.querySelector('.header-text h3') as HTMLElement;
+        const subtitle = modal.querySelector('.db-type-subtitle') as HTMLElement;
+        headerText.textContent = `连接测试失败 - ${dbName}`;
+        subtitle.textContent = '连接状态：失败';
+        subtitle.className = 'db-type-subtitle result-error';
+        
+        // 添加失败消息
+        const resultMessage = document.createElement('div');
+        resultMessage.className = 'connection-result error';
+        resultMessage.textContent = `数据库 "${dbName}" 连接测试失败，请检查配置。`;
+        logContainer.parentNode?.appendChild(resultMessage);
+        
+        // 重新加载数据库配置，确保UI与最新数据保持同步
+        await loadDatabaseConfigs();
       }
+      logContainer.appendChild(logItem);
+      logContainer.scrollTop = logContainer.scrollHeight;
+
     } catch (error) {
       console.error("Connection test failed:", error);
-      alert(`数据库 "${dbName}" 连接测试失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      
+      // 查找已创建的模态框
+      const modal = document.querySelector('.database-detail-modal') as HTMLElement;
+      if (modal) {
+        const logContainer = modal.querySelector('.connection-log') as HTMLElement;
+        
+        // 添加错误日志
+        const logItem = document.createElement('div');
+        logItem.className = 'log-item error';
+        logItem.textContent = `连接失败: ${error instanceof Error ? error.message : '未知错误'}`;
+        logContainer.appendChild(logItem);
+        logContainer.scrollTop = logContainer.scrollHeight;
+        
+        // 更新模态框标题和状态
+        const headerText = modal.querySelector('.header-text h3') as HTMLElement;
+        const subtitle = modal.querySelector('.db-type-subtitle') as HTMLElement;
+        headerText.textContent = `连接测试失败 - ${dbName}`;
+        subtitle.textContent = '连接状态：错误';
+        subtitle.className = 'db-type-subtitle result-error';
+        
+        // 添加错误消息
+        const resultMessage = document.createElement('div');
+        resultMessage.className = 'connection-result error';
+        resultMessage.textContent = `数据库 "${dbName}" 连接测试失败: ${error instanceof Error ? error.message : '未知错误'}`;
+        logContainer.parentNode?.appendChild(resultMessage);
+      }
     } finally {
-      // 完全恢复原始按钮
-      tempContainer.parentNode?.insertBefore(button, tempContainer);
-      tempContainer.parentNode?.removeChild(tempContainer);
-      button.disabled = false;
+      // 恢复原始按钮的内容和样式，避免DOM结构变化
+      button.innerHTML = originalContent;
+      button.disabled = originalDisabled;
+      button.style.pointerEvents = originalPointerEvents;
+      button.style.minWidth = originalMinWidth;
+      button.style.border = originalBorder;
+      button.style.borderRadius = originalBorderRadius;
+      button.style.background = originalBackground;
     }
   };
 
