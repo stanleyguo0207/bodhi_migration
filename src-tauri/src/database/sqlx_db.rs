@@ -7,18 +7,18 @@ use std::str::FromStr;
 // 数据库类型枚举
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum DatabaseType {
-    SQLite,
-    MySQL,
-    PostgreSQL,
+    Sqlite,
+    MySql,
+    PostgreSql,
     Redis,
 }
 
 impl DatabaseType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            DatabaseType::SQLite => "sqlite",
-            DatabaseType::MySQL => "mysql",
-            DatabaseType::PostgreSQL => "postgresql",
+            DatabaseType::Sqlite => "sqlite",
+            DatabaseType::MySql => "mysql",
+            DatabaseType::PostgreSql => "postgresql",
             DatabaseType::Redis => "redis",
         }
     }
@@ -29,9 +29,9 @@ impl FromStr for DatabaseType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "sqlite" => Ok(DatabaseType::SQLite),
-            "mysql" => Ok(DatabaseType::MySQL),
-            "postgresql" | "postgres" => Ok(DatabaseType::PostgreSQL),
+            "sqlite" => Ok(DatabaseType::Sqlite),
+            "mysql" => Ok(DatabaseType::MySql),
+            "postgresql" | "postgres" => Ok(DatabaseType::PostgreSql),
             "redis" => Ok(DatabaseType::Redis),
             _ => Err(format!("Unknown database type: {}", s)),
         }
@@ -80,7 +80,7 @@ impl SqlxDatabaseConnection {
         );
 
         match db_type {
-            DatabaseType::SQLite => {
+            DatabaseType::Sqlite => {
                 // 为SQLite使用专用连接池
                 let pool = sqlx::sqlite::SqlitePoolOptions::new()
                     .max_connections(5)
@@ -127,7 +127,7 @@ impl SqlxDatabaseConnection {
         db_type: &DatabaseType,
     ) -> Result<String, String> {
         match db_type {
-            DatabaseType::SQLite => {
+            DatabaseType::Sqlite => {
                 let db_path = config
                     .database
                     .as_ref()
@@ -161,7 +161,7 @@ impl SqlxDatabaseConnection {
                     Ok(format!("sqlite://{}", db_path))
                 }
             }
-            DatabaseType::MySQL => {
+            DatabaseType::MySql => {
                 let host = config
                     .host
                     .as_ref()
@@ -188,7 +188,7 @@ impl SqlxDatabaseConnection {
                     username, password, host, port, database, ssl_param
                 ))
             }
-            DatabaseType::PostgreSQL => {
+            DatabaseType::PostgreSql => {
                 let host = config
                     .host
                     .as_ref()

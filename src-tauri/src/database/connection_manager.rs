@@ -25,7 +25,7 @@ impl UnifiedConnection {
             UnifiedConnection::Sqlx(_) => {
                 // 由于SqlxDatabaseConnection现在是枚举，我们需要其他方式来确定类型
                 // 暂时返回一个默认值，或者我们可以从配置中获取
-                DatabaseType::SQLite // 临时默认值
+                DatabaseType::Sqlite // 临时默认值
             },
             UnifiedConnection::Redis(_) => DatabaseType::Redis,
         }
@@ -52,7 +52,7 @@ impl UnifiedConnectionManager {
         let connection_id = config.id.clone();
 
         match db_type {
-            DatabaseType::SQLite | DatabaseType::MySQL | DatabaseType::PostgreSQL => {
+            DatabaseType::Sqlite | DatabaseType::MySql | DatabaseType::PostgreSql => {
                 let connection = SqlxDatabaseConnection::new(config).await?;
                 let mut manager = self.sqlx_manager.write().await;
                 manager.add_connection(connection_id.clone(), connection);
